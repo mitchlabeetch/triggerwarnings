@@ -63,5 +63,25 @@ export declare class SupabaseClient {
      * Submit feedback
      */
     static submitFeedback(message: string, name?: string, email?: string): Promise<boolean>;
+    /**
+     * Get pending warnings for moderation
+     */
+    static getPendingWarnings(limit?: number, offset?: number): Promise<Warning[]>;
+    /**
+     * Approve a warning
+     */
+    static approveWarning(triggerId: string): Promise<boolean>;
+    /**
+     * Reject a warning
+     */
+    static rejectWarning(triggerId: string): Promise<boolean>;
+    /**
+     * Get warning statistics
+     */
+    static getStatistics(): Promise<{
+        total: number;
+        byCategory: Record<string, number>;
+        byStatus: Record<string, number>;
+    }>;
 }
 //# sourceMappingURL=SupabaseClient.d.ts.map

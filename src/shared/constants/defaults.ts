@@ -37,8 +37,8 @@ export const DEFAULT_PROFILE: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'> = 
   theme: 'system',
 };
 
-// Cache expiration time (1 hour)
-export const CACHE_EXPIRATION_MS = 60 * 60 * 1000;
+// Cache expiration time (5 minutes)
+export const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
 // Supabase configuration
 export const SUPABASE_URL = 'https://qasvqvtoyrucrwshojzd.supabase.co';

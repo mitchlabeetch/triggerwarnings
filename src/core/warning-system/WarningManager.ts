@@ -10,6 +10,11 @@ import { StorageAdapter } from '../storage/StorageAdapter';
 import { ProfileManager } from '../profiles/ProfileManager';
 import { CACHE_EXPIRATION_MS, VIDEO_CHECK_INTERVAL_MS } from '@shared/constants/defaults';
 
+interface CacheEntry {
+  warnings: Warning[];
+  timestamp: number;
+}
+
 export class WarningManager {
   private provider: IStreamingProvider;
   private profile: Profile;
@@ -17,8 +22,12 @@ export class WarningManager {
   private activeWarnings: Set<string> = new Set();
   private ignoredTriggersThisSession: Set<string> = new Set();
   private ignoredCategoriesForVideo: Set<string> = new Set();
-  private checkInterval: number | null = null;
+  private rafId: number | null = null;
+  private lastCheckTime: number = 0;
   private currentVideoId: string | null = null;
+
+  // In-memory cache for faster access
+  private static warningCache: Map<string, CacheEntry> = new Map();
 
   private onWarningCallback: ((warning: ActiveWarning) => void) | null = null;
   private onWarningEndCallback: ((warningId: string) => void) | null = null;
@@ -66,15 +75,31 @@ export class WarningManager {
   private async fetchWarnings(videoId: string): Promise<void> {
     this.currentVideoId = videoId;
 
-    // Check cache first
+    // Check in-memory cache first (fastest)
+    const memoryCache = WarningManager.warningCache.get(videoId);
+    if (memoryCache && Date.now() - memoryCache.timestamp < CACHE_EXPIRATION_MS) {
+      console.log('[TW WarningManager] Using in-memory cached warnings');
+      this.warnings = this.filterWarningsByProfile(memoryCache.warnings);
+      return;
+    }
+
+    // Check chrome.storage cache (slower, but persists)
     const cache = await StorageAdapter.get('warningsCache');
     const cacheExpiration = await StorageAdapter.get('cacheExpiration');
 
     if (cache && cache[videoId] && cacheExpiration && cacheExpiration[videoId]) {
       const expirationTime = cacheExpiration[videoId];
       if (Date.now() < expirationTime) {
-        console.log('[TW WarningManager] Using cached warnings');
-        this.warnings = cache[videoId];
+        console.log('[TW WarningManager] Using storage cached warnings');
+        const allWarnings = cache[videoId];
+
+        // Update in-memory cache
+        WarningManager.warningCache.set(videoId, {
+          warnings: allWarnings,
+          timestamp: Date.now(),
+        });
+
+        this.warnings = this.filterWarningsByProfile(allWarnings);
         return;
       }
     }
@@ -86,7 +111,12 @@ export class WarningManager {
     // Filter by profile
     this.warnings = this.filterWarningsByProfile(allWarnings);
 
-    // Update cache
+    // Update both caches
+    WarningManager.warningCache.set(videoId, {
+      warnings: allWarnings,
+      timestamp: Date.now(),
+    });
+
     const newCache = cache || {};
     newCache[videoId] = allWarnings;
     await StorageAdapter.set('warningsCache', newCache);
@@ -118,16 +148,39 @@ export class WarningManager {
   }
 
   /**
-   * Start monitoring video playback
+   * Start monitoring video playback using requestAnimationFrame
    */
   private startMonitoring(): void {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
+    if (this.rafId !== null) {
+      this.stopMonitoring();
     }
 
-    this.checkInterval = window.setInterval(() => {
-      this.checkWarnings();
-    }, VIDEO_CHECK_INTERVAL_MS);
+    this.lastCheckTime = Date.now();
+
+    const checkLoop = () => {
+      const now = Date.now();
+
+      // Only check every VIDEO_CHECK_INTERVAL_MS to avoid excessive calls
+      if (now - this.lastCheckTime >= VIDEO_CHECK_INTERVAL_MS) {
+        this.checkWarnings();
+        this.lastCheckTime = now;
+      }
+
+      // Continue loop
+      this.rafId = requestAnimationFrame(checkLoop);
+    };
+
+    this.rafId = requestAnimationFrame(checkLoop);
+  }
+
+  /**
+   * Stop monitoring video playback
+   */
+  private stopMonitoring(): void {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
   }
 
   /**
@@ -278,10 +331,7 @@ export class WarningManager {
    * Clean up
    */
   dispose(): void {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
+    this.stopMonitoring();
 
     this.activeWarnings.clear();
     this.warnings = [];

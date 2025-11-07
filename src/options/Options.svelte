@@ -4,6 +4,7 @@
   import type { Profile, BannerPosition, Theme } from '@shared/types/Profile.types';
   import { TRIGGER_CATEGORIES, CATEGORY_KEYS } from '@shared/constants/categories';
   import ToastContainer from '@shared/components/ToastContainer.svelte';
+  import Stats from './components/Stats.svelte';
   import { toast } from '@shared/utils/toast';
 
   let activeProfile: Profile | null = null;
@@ -381,16 +382,8 @@
         <!-- Stats Tab -->
         {#if activeTab === 'stats'}
         <section class="section">
-          <h2 class="section-title">Coming Soon</h2>
-          <div class="info-box">
-            <p>Analytics and statistics features are coming soon!</p>
-            <ul>
-              <li>View total warnings in the database</li>
-              <li>See warnings by category and platform</li>
-              <li>Track your contribution stats</li>
-              <li>View top contributors leaderboard</li>
-            </ul>
-          </div>
+          <h2 class="section-title">Community Statistics</h2>
+          <Stats />
         </section>
         {/if}
 

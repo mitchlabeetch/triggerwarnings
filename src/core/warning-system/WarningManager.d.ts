@@ -10,8 +10,10 @@ export declare class WarningManager {
     private activeWarnings;
     private ignoredTriggersThisSession;
     private ignoredCategoriesForVideo;
-    private checkInterval;
+    private rafId;
+    private lastCheckTime;
     private currentVideoId;
+    private static warningCache;
     private onWarningCallback;
     private onWarningEndCallback;
     constructor(provider: IStreamingProvider);
@@ -32,9 +34,13 @@ export declare class WarningManager {
      */
     private refilterWarnings;
     /**
-     * Start monitoring video playback
+     * Start monitoring video playback using requestAnimationFrame
      */
     private startMonitoring;
+    /**
+     * Stop monitoring video playback
+     */
+    private stopMonitoring;
     /**
      * Check for active warnings at current playback time
      */

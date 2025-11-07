@@ -376,4 +376,170 @@ export class SupabaseClient {
       return false;
     }
   }
+
+  /**
+   * Get pending warnings for moderation
+   */
+  static async getPendingWarnings(
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<Warning[]> {
+    try {
+      return await this.withRetry(async () => {
+        const client = await this.getInstance();
+
+        const { data, error } = await client
+          .from('triggers')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (error) {
+          throw new Error(`Failed to fetch pending warnings: ${error.message}`);
+        }
+
+        return (data || []).map((row) => ({
+          id: row.id,
+          videoId: row.video_id,
+          categoryKey: row.category_key,
+          startTime: row.start_time,
+          endTime: row.end_time,
+          submittedBy: row.submitted_by,
+          status: row.status,
+          score: row.score || 0,
+          confidenceLevel: row.confidence_level || 0,
+          requiresModeration: row.requires_moderation || false,
+          description: row.description,
+          createdAt: new Date(row.created_at),
+          updatedAt: new Date(row.updated_at || row.created_at),
+        }));
+      }, 'getPendingWarnings');
+    } catch (error) {
+      console.error('[TW Supabase] getPendingWarnings failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Approve a warning
+   */
+  static async approveWarning(triggerId: string): Promise<boolean> {
+    if (!triggerId) {
+      console.error('[TW Supabase] approveWarning: Invalid trigger ID');
+      return false;
+    }
+
+    try {
+      await this.withRetry(async () => {
+        const client = await this.getInstance();
+
+        const { error } = await client
+          .from('triggers')
+          .update({
+            status: 'approved',
+            requires_moderation: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', triggerId);
+
+        if (error) {
+          throw new Error(`Failed to approve warning: ${error.message}`);
+        }
+
+        console.log(`[TW Supabase] Warning ${triggerId} approved`);
+      }, 'approveWarning');
+
+      return true;
+    } catch (error) {
+      console.error('[TW Supabase] approveWarning failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Reject a warning
+   */
+  static async rejectWarning(triggerId: string): Promise<boolean> {
+    if (!triggerId) {
+      console.error('[TW Supabase] rejectWarning: Invalid trigger ID');
+      return false;
+    }
+
+    try {
+      await this.withRetry(async () => {
+        const client = await this.getInstance();
+
+        const { error } = await client
+          .from('triggers')
+          .update({
+            status: 'rejected',
+            requires_moderation: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', triggerId);
+
+        if (error) {
+          throw new Error(`Failed to reject warning: ${error.message}`);
+        }
+
+        console.log(`[TW Supabase] Warning ${triggerId} rejected`);
+      }, 'rejectWarning');
+
+      return true;
+    } catch (error) {
+      console.error('[TW Supabase] rejectWarning failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get warning statistics
+   */
+  static async getStatistics(): Promise<{
+    total: number;
+    byCategory: Record<string, number>;
+    byStatus: Record<string, number>;
+  }> {
+    try {
+      const client = await this.getInstance();
+
+      // Get total count
+      const { count: totalCount } = await client
+        .from('triggers')
+        .select('*', { count: 'exact', head: true });
+
+      // Get by category
+      const { data: categoryData } = await client
+        .from('triggers')
+        .select('category_key')
+        .eq('status', 'approved');
+
+      // Get by status
+      const { data: statusData } = await client.from('triggers').select('status');
+
+      const byCategory: Record<string, number> = {};
+      categoryData?.forEach((row) => {
+        byCategory[row.category_key] = (byCategory[row.category_key] || 0) + 1;
+      });
+
+      const byStatus: Record<string, number> = {};
+      statusData?.forEach((row) => {
+        byStatus[row.status] = (byStatus[row.status] || 0) + 1;
+      });
+
+      return {
+        total: totalCount || 0,
+        byCategory,
+        byStatus,
+      };
+    } catch (error) {
+      console.error('[TW Supabase] getStatistics failed:', error);
+      return {
+        total: 0,
+        byCategory: {},
+        byStatus: {},
+      };
+    }
+  }
 }
