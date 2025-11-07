@@ -3,11 +3,18 @@
   import browser from 'webextension-polyfill';
   import type { Profile } from '@shared/types/Profile.types';
   import SubmitWarning from './components/SubmitWarning.svelte';
+  import ProfileCreate from './components/ProfileCreate.svelte';
+  import ProfileRename from './components/ProfileRename.svelte';
+  import ProfileDelete from './components/ProfileDelete.svelte';
 
   let activeProfile: Profile | null = null;
   let allProfiles: Profile[] = [];
   let loading = true;
   let showSubmitForm = false;
+  let showCreateProfile = false;
+  let showRenameProfile = false;
+  let showDeleteProfile = false;
+  let profileToEdit: Profile | null = null;
   let currentVideoId: string | null = null;
   let currentTime = 0;
 
@@ -131,6 +138,38 @@
   function closeSubmitForm() {
     showSubmitForm = false;
   }
+
+  function openCreateProfile() {
+    showCreateProfile = true;
+  }
+
+  function closeCreateProfile() {
+    showCreateProfile = false;
+  }
+
+  function openRenameProfile(profile: Profile) {
+    profileToEdit = profile;
+    showRenameProfile = true;
+  }
+
+  function closeRenameProfile() {
+    showRenameProfile = false;
+    profileToEdit = null;
+  }
+
+  function openDeleteProfile(profile: Profile) {
+    profileToEdit = profile;
+    showDeleteProfile = true;
+  }
+
+  function closeDeleteProfile() {
+    showDeleteProfile = false;
+    profileToEdit = null;
+  }
+
+  async function handleProfileChange() {
+    await loadData();
+  }
 </script>
 
 <div class="popup">
@@ -147,13 +186,28 @@
     <div class="popup-content">
       <!-- Active Profile -->
       <section class="popup-section">
-        <h2 class="section-title">Active Profile</h2>
+        <div class="section-header">
+          <h2 class="section-title">Active Profile</h2>
+          <button class="btn-icon" on:click={openCreateProfile} title="Create new profile">
+            ➕
+          </button>
+        </div>
         <div class="profile-card active">
           <div class="profile-info">
             <span class="profile-name">{activeProfile.name}</span>
             <span class="profile-stats">
               {activeProfile.enabledCategories.length} categories enabled
             </span>
+          </div>
+          <div class="profile-actions">
+            <button class="btn-icon-small" on:click={() => openRenameProfile(activeProfile)} title="Rename profile">
+              ✏️
+            </button>
+            {#if allProfiles.length > 1}
+              <button class="btn-icon-small" on:click={() => openDeleteProfile(activeProfile)} title="Delete profile">
+                🗑️
+              </button>
+            {/if}
           </div>
         </div>
       </section>
@@ -219,6 +273,46 @@
       </div>
     </div>
   {/if}
+
+  <!-- Create Profile Modal -->
+  {#if showCreateProfile}
+    <div class="modal-overlay" on:click={closeCreateProfile}>
+      <div class="modal-content" on:click|stopPropagation>
+        <ProfileCreate
+          onClose={closeCreateProfile}
+          onSuccess={handleProfileChange}
+          profiles={allProfiles}
+        />
+      </div>
+    </div>
+  {/if}
+
+  <!-- Rename Profile Modal -->
+  {#if showRenameProfile && profileToEdit}
+    <div class="modal-overlay" on:click={closeRenameProfile}>
+      <div class="modal-content" on:click|stopPropagation>
+        <ProfileRename
+          onClose={closeRenameProfile}
+          onSuccess={handleProfileChange}
+          profile={profileToEdit}
+          allProfiles={allProfiles}
+        />
+      </div>
+    </div>
+  {/if}
+
+  <!-- Delete Profile Modal -->
+  {#if showDeleteProfile && profileToEdit}
+    <div class="modal-overlay" on:click={closeDeleteProfile}>
+      <div class="modal-content" on:click|stopPropagation>
+        <ProfileDelete
+          onClose={closeDeleteProfile}
+          onSuccess={handleProfileChange}
+          profile={profileToEdit}
+        />
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -259,13 +353,61 @@
     margin-bottom: 20px;
   }
 
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
   .section-title {
     font-size: 14px;
     font-weight: 600;
     color: #495057;
-    margin: 0 0 12px 0;
+    margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+  }
+
+  .btn-icon {
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    padding: 0;
+  }
+
+  .btn-icon:hover {
+    background: #667eea;
+    transform: scale(1.1);
+  }
+
+  .btn-icon-small {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    padding: 0;
+  }
+
+  .btn-icon-small:hover {
+    background: #f3f4f6;
+    border-color: #667eea;
+    transform: scale(1.05);
   }
 
   .profile-card {
@@ -277,6 +419,10 @@
     transition: all 0.2s ease;
     width: 100%;
     text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .profile-card:not(.active):hover {
@@ -295,6 +441,12 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
+  }
+
+  .profile-actions {
+    display: flex;
+    gap: 6px;
   }
 
   .profile-name {
