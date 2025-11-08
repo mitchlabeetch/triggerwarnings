@@ -2,6 +2,8 @@
  * Time formatting utilities
  */
 
+import { t } from '@shared/i18n';
+
 /**
  * Format seconds into MM:SS or HH:MM:SS
  */
@@ -18,16 +20,17 @@ export function formatTime(seconds: number): string {
 
 /**
  * Format a countdown (e.g., "in 5 seconds")
+ * Uses i18n for localization
  */
 export function formatCountdown(seconds: number): string {
   if (seconds < 1) {
-    return 'now';
+    return t('timeNow'); // "now"
   }
   if (seconds < 60) {
-    return `in ${Math.ceil(seconds)}s`;
+    return t('timeInSeconds', String(Math.ceil(seconds))); // "in 5s"
   }
   const minutes = Math.ceil(seconds / 60);
-  return `in ${minutes}m`;
+  return t('timeInMinutes', String(minutes)); // "in 2m"
 }
 
 /**
