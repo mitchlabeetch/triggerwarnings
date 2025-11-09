@@ -6,6 +6,7 @@ import browser from 'webextension-polyfill';
 import { SupabaseClient } from '@core/api/SupabaseClient';
 import { ProfileManager } from '@core/profiles/ProfileManager';
 import { StorageAdapter } from '@core/storage/StorageAdapter';
+import { isSupportedPlatform } from '@shared/utils/platformDetection';
 console.log('[TW Background] Service worker started');
 /**
  * Initialize Supabase client on startup
@@ -106,24 +107,17 @@ async function broadcastProfileChange(profileId) {
     const tabs = await browser.tabs.query({});
     for (const tab of tabs) {
         if (tab.id && tab.url) {
-            // Only send to tabs with our content scripts
-            const isSupported = tab.url.includes('netflix.com') ||
-                tab.url.includes('primevideo.com') ||
-                tab.url.includes('amazon.com') ||
-                tab.url.includes('youtube.com') ||
-                tab.url.includes('hulu.com') ||
-                tab.url.includes('disneyplus.com') ||
-                tab.url.includes('max.com') ||
-                tab.url.includes('peacocktv.com');
-            if (isSupported) {
+            // Only send to tabs with our content scripts - use centralized platform detection
+            if (isSupportedPlatform(tab.url)) {
                 try {
                     await browser.tabs.sendMessage(tab.id, {
                         type: 'PROFILE_CHANGED',
                         profileId,
                     });
+                    console.log('[TW Background] Sent profile change to tab:', tab.id);
                 }
                 catch (error) {
-                    // Tab might not have content script loaded yet
+                    // Tab might not have content script loaded yet, or user navigated away
                     console.warn('[TW Background] Failed to send message to tab:', tab.id);
                 }
             }
