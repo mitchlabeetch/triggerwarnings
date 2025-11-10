@@ -382,15 +382,15 @@
   }
 
   .popup-content {
-    padding: 12px;
+    padding: 10px;
   }
 
   .popup-section {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
   .popup-section:last-of-type {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .section-header {
@@ -413,13 +413,13 @@
     background: white;
     border: 2px solid #667eea;
     border-radius: 6px;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
     transition: all 0.2s;
     padding: 0;
   }
@@ -433,13 +433,13 @@
     background: white;
     border: 1px solid #d1d5db;
     border-radius: 4px;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     transition: all 0.2s;
     padding: 0;
   }
@@ -454,7 +454,7 @@
     background: white;
     border: 2px solid transparent;
     border-radius: 8px;
-    padding: 12px;
+    padding: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
     width: 100%;
@@ -462,7 +462,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
   }
 
   .profile-card:not(.active):hover {
@@ -507,17 +507,17 @@
 
   .btn {
     width: 100%;
-    padding: 10px 16px;
+    padding: 8px 12px;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .btn-primary {
