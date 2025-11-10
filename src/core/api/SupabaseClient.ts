@@ -220,6 +220,7 @@ export class SupabaseClient {
         return (data || []).map((row) => ({
           id: row.id,
           videoId: row.video_id,
+          videoTitle: row.video_title || undefined,
           categoryKey: row.category_key,
           startTime: row.start_time,
           endTime: row.end_time,
@@ -231,6 +232,8 @@ export class SupabaseClient {
           description: row.description,
           createdAt: new Date(row.created_at),
           updatedAt: new Date(row.updated_at || row.created_at),
+          moderatedAt: row.moderated_at ? new Date(row.moderated_at) : undefined,
+          moderatedBy: row.moderated_by || undefined,
         }));
       }, 'getTriggers');
     } catch (error) {
@@ -338,7 +341,7 @@ export class SupabaseClient {
       const userId = this.getUserId();
 
       const { data, error } = await client
-        .from('votes')
+        .from('trigger_votes')
         .select('vote_type')
         .eq('trigger_id', triggerId)
         .eq('user_id', userId)
@@ -409,6 +412,7 @@ export class SupabaseClient {
         return (data || []).map((row) => ({
           id: row.id,
           videoId: row.video_id,
+          videoTitle: row.video_title || undefined,
           categoryKey: row.category_key,
           startTime: row.start_time,
           endTime: row.end_time,
@@ -420,6 +424,8 @@ export class SupabaseClient {
           description: row.description,
           createdAt: new Date(row.created_at),
           updatedAt: new Date(row.updated_at || row.created_at),
+          moderatedAt: row.moderated_at ? new Date(row.moderated_at) : undefined,
+          moderatedBy: row.moderated_by || undefined,
         }));
       }, 'getPendingWarnings');
     } catch (error) {
