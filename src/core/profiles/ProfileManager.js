@@ -72,7 +72,8 @@ export class ProfileManager {
      * Create a new profile
      */
     static async create(input) {
-        const profiles = await this.getAll();
+        // Get existing profiles directly from storage to avoid circular dependency
+        const existingProfiles = (await StorageAdapter.get('profiles')) || [];
         // If copying from another profile
         let baseSettings = { ...DEFAULT_PROFILE };
         if (input.copyFrom) {
@@ -102,16 +103,16 @@ export class ProfileManager {
         };
         // If this is default, unset other defaults
         if (newProfile.isDefault) {
-            profiles.forEach((p) => {
+            existingProfiles.forEach((p) => {
                 p.isDefault = false;
             });
         }
-        profiles.push(newProfile);
-        await StorageAdapter.set('profiles', profiles);
+        existingProfiles.push(newProfile);
+        await StorageAdapter.set('profiles', existingProfiles);
         // Update cache
         this.cache.set(newProfile.id, newProfile);
         // Set as active if it's the first profile
-        if (profiles.length === 1) {
+        if (existingProfiles.length === 1) {
             await this.setActive(newProfile.id);
         }
         return newProfile;
