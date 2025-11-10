@@ -238,6 +238,36 @@ browser.runtime.onMessage.addListener((message): void | Promise<any> => {
     }
   }
 
+  if (message.type === 'CONTROL_VIDEO') {
+    // Control video playback (play, pause, seek)
+    try {
+      if (app['provider']) {
+        const videoElement = app['provider'].getVideoElement();
+        if (videoElement) {
+          const { action, seekTime } = message;
+
+          if (action === 'play') {
+            videoElement.play();
+          } else if (action === 'pause') {
+            videoElement.pause();
+          } else if (action === 'seek' && seekTime !== undefined) {
+            videoElement.currentTime = seekTime;
+          }
+
+          return Promise.resolve({
+            success: true,
+            timestamp: videoElement.currentTime,
+            paused: videoElement.paused,
+          });
+        }
+      }
+      return Promise.resolve({ success: false, error: 'No video element found' });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return Promise.resolve({ success: false, error: errorMessage });
+    }
+  }
+
   return;
 });
 
