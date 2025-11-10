@@ -65,7 +65,7 @@ export function getPlatformFromUrl(
     const hostname = url.includes('://') ? new URL(url).hostname : url;
 
     for (const [platform, domains] of Object.entries(PLATFORM_DOMAINS)) {
-      if (domains.some((domain) => hostname.includes(domain))) {
+      if (domains.some((domain: string) => hostname.includes(domain))) {
         return platform as keyof PlatformDomains;
       }
     }

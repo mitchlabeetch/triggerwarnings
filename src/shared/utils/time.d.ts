@@ -7,6 +7,7 @@
 export declare function formatTime(seconds: number): string;
 /**
  * Format a countdown (e.g., "in 5 seconds")
+ * Uses i18n for localization
  */
 export declare function formatCountdown(seconds: number): string;
 /**
