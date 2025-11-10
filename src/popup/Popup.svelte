@@ -131,7 +131,42 @@
     browser.runtime.openOptionsPage();
   }
 
-  function openSubmitForm() {
+  async function openSubmitForm() {
+    // Try to get quick-add context first (if user clicked quick-add button)
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: 'GET_QUICK_ADD_CONTEXT',
+      });
+
+      if (response.success && response.data) {
+        currentTime = response.data.timestamp || 0;
+        currentVideoId = response.data.videoId || currentVideoId;
+        console.log('[TW Popup] Using quick-add context:', currentTime, currentVideoId);
+        showSubmitForm = true;
+        return;
+      }
+    } catch (error) {
+      console.warn('[TW Popup] No quick-add context available:', error);
+    }
+
+    // If no quick-add context, try to get current timestamp from active tab
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.id) {
+        const response = await browser.tabs.sendMessage(tabs[0].id, {
+          type: 'GET_CURRENT_TIMESTAMP',
+        });
+
+        if (response.success && response.timestamp !== undefined) {
+          currentTime = response.timestamp;
+          console.log('[TW Popup] Got current timestamp from tab:', currentTime);
+        }
+      }
+    } catch (error) {
+      console.warn('[TW Popup] Could not get current timestamp from tab:', error);
+      // Not a critical error, user can still submit with default timestamp
+    }
+
     showSubmitForm = true;
   }
 
@@ -318,14 +353,15 @@
 <style>
   .popup {
     width: 320px;
-    min-height: 400px;
+    max-height: 600px;
+    overflow-y: auto;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: #f8f9fa;
   }
 
   .popup-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 20px;
+    padding: 16px;
     color: white;
   }
 
@@ -346,11 +382,15 @@
   }
 
   .popup-content {
-    padding: 16px;
+    padding: 12px;
   }
 
   .popup-section {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+  }
+
+  .popup-section:last-of-type {
+    margin-bottom: 8px;
   }
 
   .section-header {
@@ -467,7 +507,7 @@
 
   .btn {
     width: 100%;
-    padding: 12px 20px;
+    padding: 10px 16px;
     border: none;
     border-radius: 8px;
     font-size: 14px;

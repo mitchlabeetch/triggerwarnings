@@ -213,10 +213,62 @@ if (document.readyState === 'loading') {
 }
 
 // Listen for messages from background script
-browser.runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener((message): void | Promise<any> => {
   if (message.type === 'PROFILE_CHANGED') {
     app.handleProfileChange(message.profileId);
+    return;
   }
+
+  if (message.type === 'GET_CURRENT_TIMESTAMP') {
+    // Return current video timestamp
+    try {
+      if (app['provider']) {
+        const videoElement = app['provider'].getVideoElement();
+        if (videoElement) {
+          return Promise.resolve({
+            success: true,
+            timestamp: videoElement.currentTime,
+          });
+        }
+      }
+      return Promise.resolve({ success: false, error: 'No video element found' });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return Promise.resolve({ success: false, error: errorMessage });
+    }
+  }
+
+  if (message.type === 'CONTROL_VIDEO') {
+    // Control video playback (play, pause, seek)
+    try {
+      if (app['provider']) {
+        const videoElement = app['provider'].getVideoElement();
+        if (videoElement) {
+          const { action, seekTime } = message;
+
+          if (action === 'play') {
+            videoElement.play();
+          } else if (action === 'pause') {
+            videoElement.pause();
+          } else if (action === 'seek' && seekTime !== undefined) {
+            videoElement.currentTime = seekTime;
+          }
+
+          return Promise.resolve({
+            success: true,
+            timestamp: videoElement.currentTime,
+            paused: videoElement.paused,
+          });
+        }
+      }
+      return Promise.resolve({ success: false, error: 'No video element found' });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return Promise.resolve({ success: false, error: errorMessage });
+    }
+  }
+
+  return;
 });
 
 // Clean up on unload

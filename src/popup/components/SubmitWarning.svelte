@@ -16,9 +16,73 @@
   let error = '';
   let success = false;
 
+  // Video player controls
+  let currentVideoTime = currentTime;
+  let isPlaying = false;
+  let loadingPlayer = false;
+
   const MAX_DESCRIPTION_LENGTH = 500;
   const MIN_WARNING_DURATION = 1; // seconds
   const MAX_WARNING_DURATION = 600; // 10 minutes
+
+  async function controlVideo(action: 'play' | 'pause' | 'seek', seekTime?: number) {
+    try {
+      loadingPlayer = true;
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0]?.id) {
+        throw new Error('No active tab found');
+      }
+
+      const response = await browser.tabs.sendMessage(tabs[0].id, {
+        type: 'CONTROL_VIDEO',
+        action,
+        seekTime,
+      });
+
+      if (response.success) {
+        currentVideoTime = response.timestamp;
+        isPlaying = !response.paused;
+      }
+    } catch (error) {
+      console.error('Failed to control video:', error);
+    } finally {
+      loadingPlayer = false;
+    }
+  }
+
+  async function updateCurrentTime() {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.id) {
+        const response = await browser.tabs.sendMessage(tabs[0].id, {
+          type: 'GET_CURRENT_TIMESTAMP',
+        });
+
+        if (response.success) {
+          currentVideoTime = response.timestamp;
+        }
+      }
+    } catch (error) {
+      // Silent fail
+    }
+  }
+
+  function handlePlayPause() {
+    controlVideo(isPlaying ? 'pause' : 'play');
+  }
+
+  function handleRewind(seconds: number) {
+    const newTime = Math.max(0, currentVideoTime - seconds);
+    controlVideo('seek', newTime);
+  }
+
+  function captureStartTime() {
+    startTime = Math.floor(currentVideoTime);
+  }
+
+  function captureEndTime() {
+    endTime = Math.floor(currentVideoTime);
+  }
 
   function validateForm(): string | null {
     // Check category
@@ -138,6 +202,46 @@
     </div>
   {:else}
     <form on:submit|preventDefault={handleSubmit}>
+      <!-- Video Player Controls -->
+      <div class="player-controls">
+        <div class="player-header">
+          <span class="player-title">🎬 Video Controls</span>
+          <button type="button" class="btn-refresh" on:click={updateCurrentTime} disabled={loadingPlayer}>
+            🔄
+          </button>
+        </div>
+
+        <div class="player-timestamp">
+          Current Time: <strong>{formatTime(currentVideoTime)}</strong> ({Math.floor(currentVideoTime)}s)
+        </div>
+
+        <div class="player-buttons">
+          <button type="button" class="btn-player" on:click={handlePlayPause} disabled={loadingPlayer}>
+            {isPlaying ? '⏸️' : '▶️'}
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <button type="button" class="btn-player" on:click={() => handleRewind(5)} disabled={loadingPlayer}>
+            ⏪ -5s
+          </button>
+          <button type="button" class="btn-player" on:click={() => handleRewind(10)} disabled={loadingPlayer}>
+            ⏪ -10s
+          </button>
+        </div>
+
+        <div class="capture-buttons">
+          <button type="button" class="btn-capture" on:click={captureStartTime}>
+            📍 Set Start Time
+          </button>
+          <button type="button" class="btn-capture" on:click={captureEndTime}>
+            📍 Set End Time
+          </button>
+        </div>
+
+        <div class="player-hint">
+          Use controls to find exact start/end times for the trigger
+        </div>
+      </div>
+
       <!-- Category Selection -->
       <div class="form-group">
         <label for="category">Trigger Category *</label>
@@ -470,5 +574,130 @@
     font-size: 12px;
     color: #dc2626;
     margin-top: 4px;
+  }
+
+  /* Video Player Controls */
+  .player-controls {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .player-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .player-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+  }
+
+  .btn-refresh {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+
+  .btn-refresh:hover:not(:disabled) {
+    background: #f8f9fa;
+    border-color: #667eea;
+    transform: rotate(180deg);
+  }
+
+  .btn-refresh:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .player-timestamp {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    color: #495057;
+    margin-bottom: 12px;
+    border: 1px solid #dee2e6;
+  }
+
+  .player-timestamp strong {
+    color: #667eea;
+    font-size: 16px;
+  }
+
+  .player-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .btn-player {
+    padding: 8px 12px;
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    color: #667eea;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .btn-player:hover:not(:disabled) {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  .btn-player:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .capture-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .btn-capture {
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-capture:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+  }
+
+  .player-hint {
+    font-size: 11px;
+    color: #6c757d;
+    text-align: center;
+    font-style: italic;
   }
 </style>
