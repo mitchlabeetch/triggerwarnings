@@ -59,7 +59,10 @@ CREATE POLICY "Moderators can read all feedback"
 -- 2. ADD MISSING VIEW: recent_approved_triggers
 -- =====================================================
 
-CREATE OR REPLACE VIEW recent_approved_triggers AS
+-- Drop view if exists (can't ALTER views, must recreate)
+DROP VIEW IF EXISTS recent_approved_triggers;
+
+CREATE VIEW recent_approved_triggers AS
 SELECT * FROM triggers
 WHERE status = 'approved'
 ORDER BY created_at DESC
