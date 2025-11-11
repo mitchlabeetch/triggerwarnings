@@ -3,13 +3,14 @@
   import { TRIGGER_CATEGORIES, CATEGORY_KEYS } from '@shared/constants/categories';
   import type { TriggerCategory } from '@shared/types/Warning.types';
   import { detectPlatformFromUrl, type StreamingPlatform } from '@shared/utils/platform-detector';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
 
   export let onClose: () => void;
   export let videoId: string | null;
   export let currentTime: number;
 
   let detectedPlatform: StreamingPlatform | null = null;
+  let timestampUpdateInterval: number | null = null;
 
   onMount(async () => {
     // Detect platform from current tab URL
@@ -22,6 +23,17 @@
       }
     } catch (error) {
       console.error('[TW SubmitWarning] Failed to detect platform:', error);
+    }
+
+    // Start live timestamp updates for better UX
+    timestampUpdateInterval = window.setInterval(() => {
+      updateCurrentTime();
+    }, 500); // Update twice per second for smooth live display
+  });
+
+  onDestroy(() => {
+    if (timestampUpdateInterval) {
+      clearInterval(timestampUpdateInterval);
     }
   });
 
