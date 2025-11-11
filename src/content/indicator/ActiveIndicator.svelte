@@ -74,6 +74,67 @@
       document.addEventListener('mousemove', handleMouseMove);
     }
 
+    // AGGRESSIVE PERSISTENCE: Stop ALL events from reaching player when over overlay
+    const overlayElement = document.querySelector('.tw-overlay') as HTMLElement;
+    if (overlayElement) {
+      // Capture ALL events and stop propagation
+      const stopEvents = [
+        'click', 'mousedown', 'mouseup', 'mousemove', 'mouseenter', 'mouseleave',
+        'touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointerup', 'pointermove',
+        'wheel', 'keydown', 'keyup', 'keypress', 'contextmenu'
+      ];
+
+      stopEvents.forEach(eventType => {
+        overlayElement.addEventListener(eventType, (e) => {
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }, { capture: true });
+      });
+
+      // Force visibility with MutationObserver
+      const visibilityObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' &&
+              (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
+            const target = mutation.target as HTMLElement;
+            if (target.style.display === 'none' ||
+                target.style.visibility === 'hidden' ||
+                target.style.opacity === '0') {
+              // Player tried to hide us - restore visibility!
+              target.style.display = '';
+              target.style.visibility = 'visible';
+              target.style.opacity = '';
+            }
+          }
+        });
+      });
+
+      visibilityObserver.observe(overlayElement, {
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+
+      // Periodic visibility check - force overlay to stay visible
+      const visibilityInterval = window.setInterval(() => {
+        if (overlayElement && overlayElement.style.display === 'none') {
+          overlayElement.style.display = '';
+        }
+        if (overlayElement && overlayElement.style.visibility === 'hidden') {
+          overlayElement.style.visibility = 'visible';
+        }
+        // Ensure z-index remains maximum
+        if (overlayElement && overlayElement.style.zIndex !== '2147483647') {
+          overlayElement.style.zIndex = '2147483647';
+        }
+      }, 100);
+
+      return () => {
+        clearInterval(playingStateInterval);
+        clearInterval(visibilityInterval);
+        visibilityObserver.disconnect();
+      };
+    }
+
     return () => {
       clearInterval(playingStateInterval);
     };
@@ -589,16 +650,19 @@
 
 <style>
   .tw-overlay {
-    position: absolute;
-    top: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2147483647; /* Maximum z-index for absolute priority */
+    position: absolute !important;
+    top: 16px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 2147483647 !important; /* Maximum z-index for absolute priority */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     animation: tw-overlay-fade-in 0.5s ease-out;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     max-width: 90vw;
-    pointer-events: auto;
+    pointer-events: auto !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
   @keyframes tw-overlay-fade-in {
