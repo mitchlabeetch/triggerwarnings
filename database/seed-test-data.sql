@@ -13,10 +13,9 @@ DELETE FROM trigger_votes WHERE trigger_id IN (
 DELETE FROM triggers WHERE video_id = 'ZKCmFcMR2tU' AND platform = 'youtube';
 
 -- =====================================================
--- DISABLE USER PROFILE TRIGGER TEMPORARILY
--- (Since we're inserting test data without real users)
+-- NOTE: No need to disable triggers anymore!
+-- The increment_user_submissions() function now handles NULL values gracefully
 -- =====================================================
-ALTER TABLE triggers DISABLE TRIGGER increment_submissions_on_trigger_insert;
 
 -- =====================================================
 -- SEED TRIGGERS FOR TEST VIDEO
@@ -407,11 +406,6 @@ INSERT INTO triggers (
   NULL,
   NOW() - INTERVAL '1 hour'
 );
-
--- =====================================================
--- RE-ENABLE USER PROFILE TRIGGER
--- =====================================================
-ALTER TABLE triggers ENABLE TRIGGER increment_submissions_on_trigger_insert;
 
 -- =====================================================
 -- VERIFICATION QUERY
