@@ -108,6 +108,7 @@ export class ProfileManager {
           theme: sourceProfile.theme,
           defaultProtection: sourceProfile.defaultProtection,
           categoryProtections: { ...sourceProfile.categoryProtections },
+          helperMode: sourceProfile.helperMode,
         };
       }
     }

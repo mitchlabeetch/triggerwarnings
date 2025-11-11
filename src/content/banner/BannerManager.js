@@ -20,6 +20,7 @@ export class BannerManager {
     fontSize = 16;
     transparency = 85;
     spoilerFreeMode = false;
+    helperMode = false;
     constructor(provider) {
         this.provider = provider;
     }
@@ -46,6 +47,7 @@ export class BannerManager {
                 fontSize: this.fontSize,
                 transparency: this.transparency,
                 spoilerFreeMode: this.spoilerFreeMode,
+                helperMode: this.helperMode,
             },
         });
         logger.info('[TW BannerManager] ✅ Banner component mounted');
@@ -68,6 +70,7 @@ export class BannerManager {
                 this.fontSize = profile.display.fontSize;
                 this.transparency = profile.display.transparency;
                 this.spoilerFreeMode = profile.display.spoilerFreeMode;
+                this.helperMode = profile.helperMode;
                 // Update banner if already mounted
                 if (this.bannerComponent) {
                     this.bannerComponent.$set({
@@ -75,6 +78,7 @@ export class BannerManager {
                         fontSize: this.fontSize,
                         transparency: this.transparency,
                         spoilerFreeMode: this.spoilerFreeMode,
+                        helperMode: this.helperMode,
                     });
                 }
                 logger.debug('Profile settings loaded:', {

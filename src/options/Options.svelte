@@ -58,6 +58,9 @@
       enabledCategories: newCategories,
     };
 
+    // Force re-render by reassigning
+    activeProfile = activeProfile;
+
     // Update in background without waiting
     updateProfileSilent({
       enabledCategories: newCategories,
@@ -151,6 +154,10 @@
     await updateProfile({ categoryProtections: newProtections });
   }
 
+  async function updateHelperMode(enabled: boolean) {
+    await updateProfile({ helperMode: enabled });
+  }
+
   async function switchProfile(profileId: string) {
     try {
       await browser.runtime.sendMessage({
@@ -192,6 +199,10 @@
         <!-- Profile Selector -->
         <section class="section">
           <h2 class="section-title">Active Profile</h2>
+          <p class="section-description">
+            📋 <strong>What are profiles?</strong> Profiles let you create different trigger warning configurations for different situations.
+            For example, you might want stricter warnings when watching alone versus with friends, or different settings for different family members.
+          </p>
           <div class="profile-selector">
             {#each allProfiles as profile}
               <button
@@ -199,10 +210,15 @@
                 class:active={profile.id === activeProfile.id}
                 on:click={() => switchProfile(profile.id)}
               >
-                <div class="profile-btn-name">{profile.name}</div>
-                <div class="profile-btn-stats">
-                  {profile.enabledCategories.length} categories
+                <div class="profile-btn-content">
+                  <div class="profile-btn-name">{profile.name}</div>
+                  <div class="profile-btn-stats">
+                    {profile.enabledCategories.length} categories enabled
+                  </div>
                 </div>
+                {#if profile.id === activeProfile.id}
+                  <div class="profile-btn-badge">✓ Active</div>
+                {/if}
               </button>
             {/each}
           </div>
@@ -423,6 +439,77 @@
             </div>
           </div>
 
+          <h2 class="section-title" style="margin-top: 48px;">🎨 Overlay Customization</h2>
+          <p class="section-description">
+            Customize the "TW" overlay button appearance and behavior
+          </p>
+
+          <!-- Overlay Button Color -->
+          <div class="setting-group">
+            <div class="setting-label" role="heading" aria-level="3">Button Color</div>
+            <input
+              type="color"
+              value={activeProfile.display.overlaySettings?.buttonColor || '#8b5cf6'}
+              on:change={(e) => updateDisplay('overlaySettings', {
+                ...(activeProfile.display.overlaySettings || {}),
+                buttonColor: e.currentTarget.value
+              })}
+              class="color-picker"
+            />
+          </div>
+
+          <!-- Overlay Opacity -->
+          <div class="setting-group">
+            <div class="setting-label" role="heading" aria-level="3">
+              Overlay Opacity: {Math.round((activeProfile.display.overlaySettings?.buttonOpacity || 0.45) * 100)}%
+            </div>
+            <input
+              type="range"
+              min="0.1"
+              max="1"
+              step="0.05"
+              value={activeProfile.display.overlaySettings?.buttonOpacity || 0.45}
+              on:input={(e) => updateDisplay('overlaySettings', {
+                ...(activeProfile.display.overlaySettings || {}),
+                buttonOpacity: Number(e.currentTarget.value)
+              })}
+              class="slider"
+            />
+          </div>
+
+          <h2 class="section-title" style="margin-top: 48px;">🤝 Helper Mode</h2>
+          <p class="section-description">
+            Enable Helper Mode to help improve warning accuracy for the entire community. When enabled, you'll see "Confirm" and "Wrong" buttons on active warnings, allowing you to vote on their accuracy.
+          </p>
+
+          <!-- Helper Mode Toggle -->
+          <div class="setting-group">
+            <button
+              class="helper-mode-toggle"
+              class:active={activeProfile.helperMode}
+              on:click={() => updateHelperMode(!activeProfile.helperMode)}
+            >
+              <div class="helper-mode-content">
+                <div class="helper-mode-header">
+                  <span class="helper-mode-icon">{activeProfile.helperMode ? '✅' : '⬜'}</span>
+                  <span class="helper-mode-label">Helper Mode</span>
+                  <span class="helper-mode-status">{activeProfile.helperMode ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div class="helper-mode-description">
+                  {#if activeProfile.helperMode}
+                    <span class="helper-mode-desc-text">You're helping build a safer community! Vote on warnings to improve accuracy.</span>
+                  {:else}
+                    <span class="helper-mode-desc-text">Enable to show voting buttons on warnings and contribute to the community database.</span>
+                  {/if}
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div class="info-box" style="margin-top: 16px;">
+            <strong>How it works:</strong> When Helper Mode is enabled, active warnings will show "Confirm ✓" and "Wrong ✕" buttons. Your votes help verify warning accuracy and improve the experience for all users. High-quality voters gain reputation, making their votes more impactful.
+          </div>
+
           <h2 class="section-title" style="margin-top: 48px;">🛡️ Protection Settings</h2>
           <p class="section-description">
             Choose what happens during active trigger warnings (after the lead time has passed)
@@ -544,15 +631,28 @@
 <style>
   .options {
     min-height: 100vh;
-    background: #f8f9fa;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
 
   .options-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 40px 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 48px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .options-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)" /></svg>');
+    opacity: 0.3;
   }
 
   .container {
@@ -565,19 +665,34 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+    z-index: 1;
   }
 
   .header-title {
     margin: 0;
-    font-size: 32px;
-    font-weight: 700;
+    font-size: 36px;
+    font-weight: 800;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 20px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.5px;
   }
 
   .header-icon {
-    font-size: 40px;
+    font-size: 48px;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+    animation: iconBounce 2s ease-in-out infinite;
+  }
+
+  @keyframes iconBounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
   }
 
   .saving-indicator {
@@ -594,15 +709,28 @@
   }
 
   .section-title {
-    font-size: 24px;
-    font-weight: 600;
-    color: #212529;
-    margin: 0 0 12px 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::before {
+    content: '';
+    width: 4px;
+    height: 28px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 2px;
   }
 
   .section-description {
-    color: #6c757d;
-    margin: 0 0 24px 0;
+    color: #718096;
+    margin: 0 0 28px 0;
+    line-height: 1.6;
+    font-size: 15px;
   }
 
   .profile-selector {
@@ -612,35 +740,77 @@
   }
 
   .profile-btn {
-    padding: 16px 24px;
-    border: 2px solid #dee2e6;
-    border-radius: 12px;
-    background: white;
+    padding: 20px 24px;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .profile-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
+  }
+
+  .profile-btn:hover::before,
+  .profile-btn.active::before {
+    transform: scaleY(1);
   }
 
   .profile-btn:hover {
     border-color: #667eea;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
   }
 
   .profile-btn.active {
     border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.25);
+  }
+
+  .profile-btn-content {
+    flex: 1;
   }
 
   .profile-btn-name {
-    font-weight: 600;
-    color: #212529;
-    margin-bottom: 4px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 6px;
+    font-size: 16px;
   }
 
   .profile-btn-stats {
+    font-size: 13px;
+    color: #718096;
+    font-weight: 500;
+  }
+
+  .profile-btn-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
     font-size: 12px;
-    color: #6c757d;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
   }
 
   .categories-grid {
@@ -671,12 +841,27 @@
   .category-card.enabled {
     border-color: #667eea;
     border-width: 3px;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transform: translateY(-2px);
+    animation: enablePulse 0.3s ease-out;
+  }
+
+  @keyframes enablePulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: translateY(-2px) scale(1);
+    }
   }
 
   .category-card.enabled .category-name {
     color: #667eea;
+    font-weight: 700;
   }
 
   .category-icon {
@@ -720,41 +905,143 @@
   }
 
   .category-toggle {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border: 2px solid #dee2e6;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
+    font-size: 16px;
     color: #667eea;
     flex-shrink: 0;
+    transition: all 0.2s ease;
   }
 
   .category-card.enabled .category-toggle {
     border-color: #667eea;
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    animation: checkmarkAppear 0.3s ease-out;
+  }
+
+  @keyframes checkmarkAppear {
+    0% {
+      transform: scale(0) rotate(-45deg);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2) rotate(0deg);
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+  }
+
+  .helper-mode-toggle {
+    width: 100%;
+    background: white;
+    border: 3px solid #dee2e6;
+    border-radius: 16px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+  }
+
+  .helper-mode-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: #667eea;
+  }
+
+  .helper-mode-toggle.active {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+  }
+
+  .helper-mode-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .helper-mode-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .helper-mode-icon {
+    font-size: 24px;
+  }
+
+  .helper-mode-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #212529;
+    flex: 1;
+  }
+
+  .helper-mode-status {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+  }
+
+  .helper-mode-toggle.active .helper-mode-status {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
   }
 
+  .helper-mode-description {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #6c757d;
+  }
+
+  .helper-mode-desc-text {
+    font-style: italic;
+  }
+
+  .helper-mode-toggle.active .helper-mode-desc-text {
+    color: #495057;
+    font-weight: 500;
+  }
+
   .info-box {
-    background: white;
-    border: 2px solid #dee2e6;
-    border-radius: 12px;
-    padding: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
   .info-box h3 {
-    margin: 0 0 16px 0;
-    color: #212529;
+    margin: 0 0 20px 0;
+    color: #2d3748;
+    font-size: 20px;
+    font-weight: 700;
   }
 
   .info-box ul {
     margin: 0;
-    padding-left: 20px;
-    color: #6c757d;
-    line-height: 1.8;
+    padding-left: 24px;
+    color: #4a5568;
+    line-height: 2;
+    font-size: 15px;
+  }
+
+  .info-box ul li {
+    margin-bottom: 8px;
   }
 
   .loading,

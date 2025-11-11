@@ -28,6 +28,7 @@ export class BannerManager {
   private fontSize: number = 16;
   private transparency: number = 85;
   private spoilerFreeMode: boolean = false;
+  private helperMode: boolean = false;
 
   constructor(provider: IStreamingProvider) {
     this.provider = provider;
@@ -60,6 +61,7 @@ export class BannerManager {
         fontSize: this.fontSize,
         transparency: this.transparency,
         spoilerFreeMode: this.spoilerFreeMode,
+        helperMode: this.helperMode,
       },
     });
     logger.info('[TW BannerManager] ✅ Banner component mounted');
@@ -86,6 +88,7 @@ export class BannerManager {
         this.fontSize = profile.display.fontSize;
         this.transparency = profile.display.transparency;
         this.spoilerFreeMode = profile.display.spoilerFreeMode;
+        this.helperMode = profile.helperMode;
 
         // Update banner if already mounted
         if (this.bannerComponent) {
@@ -94,6 +97,7 @@ export class BannerManager {
             fontSize: this.fontSize,
             transparency: this.transparency,
             spoilerFreeMode: this.spoilerFreeMode,
+            helperMode: this.helperMode,
           });
         }
 

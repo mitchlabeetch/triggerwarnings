@@ -24,12 +24,26 @@
   let formError = '';
   let formSuccess = false;
 
+  // Form data cache with timestamp for 1-minute retention
+  let cachedFormData: {
+    category: TriggerCategory | null;
+    start: number;
+    end: number;
+    desc: string;
+    timestamp: number;
+  } | null = null;
+  const CACHE_DURATION = 60000; // 1 minute
+
+  // Step-by-step workflow state
+  type FormStep = 'category' | 'timestamps' | 'details' | 'review';
+  let currentStep: FormStep = 'category';
+
   // Category keys for selection
   const CATEGORY_KEYS = Object.keys(TRIGGER_CATEGORIES) as TriggerCategory[];
 
   // Customization props (will come from profile settings)
   export let buttonColor: string = '#8b5cf6'; // More violet as requested
-  export let buttonOpacity: number = 0.75; // Reduced opacity
+  export let buttonOpacity: number = 0.45; // Significantly reduced opacity for less intrusion
   export let appearingMode: 'always' | 'onMove' | 'onHover' = 'always';
   export let fadeOutDelay: number = 3000; // milliseconds
 
@@ -38,6 +52,8 @@
   let isVideoStarting = true;
   let videoStartTimer: number | null = null;
   let isVideoPlaying = false; // Track playing state
+  let mouseOverOverlay = false; // Track if mouse is over overlay
+  let manuallyExpanded = false; // Track if user manually expanded
 
   // Fade in after a short delay
   onMount(() => {
@@ -51,7 +67,17 @@
 
     // Update timestamp every second
     updateTimestamp();
-    intervalId = window.setInterval(updateTimestamp, 1000);
+    intervalId = window.setInterval(() => {
+      updateTimestamp();
+      // If form is showing and video is playing, auto-update endTime to follow current time
+      if (showAddTriggerForm && isVideoPlaying && videoElement && !isNaN(videoElement.currentTime)) {
+        // Only auto-update endTime if it's close to current time (within 10 seconds)
+        const currentVideoTime = Math.floor(videoElement.currentTime);
+        if (Math.abs(endTime - currentVideoTime) < 10) {
+          endTime = currentVideoTime;
+        }
+      }
+    }, 1000);
 
     // Update video playing state every 100ms for responsiveness
     const playingStateInterval = window.setInterval(() => {
@@ -63,10 +89,18 @@
 
     // Track video paused state
     if (videoElement) {
-      videoElement.addEventListener('pause', handleVideoPause);
+      videoElement.addEventListener('pause', handleVideoPaused);
       videoElement.addEventListener('play', handleVideoPlay);
       videoElement.addEventListener('playing', handleVideoPlay);
       videoElement.addEventListener('timeupdate', handleTimeUpdate);
+    }
+
+    // Check for cached form data and restore if within 1 minute
+    if (cachedFormData && Date.now() - cachedFormData.timestamp < CACHE_DURATION) {
+      selectedCategory = cachedFormData.category;
+      startTime = cachedFormData.start;
+      endTime = cachedFormData.end;
+      description = cachedFormData.desc;
     }
 
     // Handle cursor movement for appearing mode
@@ -151,7 +185,7 @@
       clearTimeout(videoStartTimer);
     }
     if (videoElement) {
-      videoElement.removeEventListener('pause', handleVideoPause);
+      videoElement.removeEventListener('pause', handleVideoPaused);
       videoElement.removeEventListener('play', handleVideoPlay);
       videoElement.removeEventListener('playing', handleVideoPlay);
       videoElement.removeEventListener('timeupdate', handleTimeUpdate);
@@ -169,14 +203,16 @@
     }
   }
 
-  function handleVideoPause() {
+  function handleVideoPaused() {
     isVideoPaused = true;
-    isExpanded = true;
+    if (!manuallyExpanded) {
+      isExpanded = true;
+    }
   }
 
   function handleVideoPlay() {
     isVideoPaused = false;
-    if (!isVideoStarting) {
+    if (!isVideoStarting && !manuallyExpanded && !mouseOverOverlay && !showAddTriggerForm) {
       isExpanded = false;
     }
   }
@@ -210,37 +246,103 @@
     showAddTriggerForm = !showAddTriggerForm;
     if (showAddTriggerForm) {
       isExpanded = true;
-      // Initialize form with current video time
-      const video = document.querySelector('video');
-      if (video && !isNaN(video.currentTime)) {
-        const current = Math.floor(video.currentTime);
-        startTime = Math.max(0, current - 5);
-        endTime = current + 5;
+      manuallyExpanded = true;
+      currentStep = 'category'; // Always start at category selection
+
+      // Check for cached data first
+      if (cachedFormData && Date.now() - cachedFormData.timestamp < CACHE_DURATION) {
+        selectedCategory = cachedFormData.category;
+        startTime = cachedFormData.start;
+        endTime = cachedFormData.end;
+        description = cachedFormData.desc;
+      } else {
+        // Initialize form with current video time
+        const video = document.querySelector('video');
+        if (video && !isNaN(video.currentTime)) {
+          const current = Math.floor(video.currentTime);
+          startTime = Math.max(0, current - 5);
+          endTime = current + 5;
+        }
+        // Reset form state
+        selectedCategory = null;
+        description = '';
       }
-      // Reset form state
-      selectedCategory = null;
-      description = '';
       formError = '';
       formSuccess = false;
+    } else {
+      // Cache form data when closing
+      cacheFormData();
+      manuallyExpanded = false;
+    }
+  }
+
+  function nextStep() {
+    if (currentStep === 'category') {
+      if (!selectedCategory) {
+        formError = 'Please select a category first';
+        return;
+      }
+      currentStep = 'timestamps';
+      formError = '';
+    } else if (currentStep === 'timestamps') {
+      if (startTime < 0 || endTime <= startTime) {
+        formError = 'Please set valid start and end times';
+        return;
+      }
+      currentStep = 'details';
+      formError = '';
+    } else if (currentStep === 'details') {
+      currentStep = 'review';
+      formError = '';
+    }
+  }
+
+  function previousStep() {
+    if (currentStep === 'timestamps') {
+      currentStep = 'category';
+    } else if (currentStep === 'details') {
+      currentStep = 'timestamps';
+    } else if (currentStep === 'review') {
+      currentStep = 'details';
+    }
+    formError = '';
+  }
+
+  function cacheFormData() {
+    // Only cache if user has entered some data
+    if (selectedCategory || description) {
+      cachedFormData = {
+        category: selectedCategory,
+        start: startTime,
+        end: endTime,
+        desc: description,
+        timestamp: Date.now()
+      };
     }
   }
 
   async function handleSubmitTrigger() {
+    console.log('[TW Overlay] Starting trigger submission...');
+
     // Validate form
     if (!selectedCategory) {
       formError = 'Please select a category';
+      console.warn('[TW Overlay] No category selected');
       return;
     }
     if (startTime < 0) {
       formError = 'Start time cannot be negative';
+      console.warn('[TW Overlay] Invalid start time:', startTime);
       return;
     }
     if (endTime <= startTime) {
       formError = 'End time must be after start time';
+      console.warn('[TW Overlay] Invalid time range:', startTime, '->', endTime);
       return;
     }
     if (description.length > 500) {
       formError = 'Description must be 500 characters or less';
+      console.warn('[TW Overlay] Description too long:', description.length);
       return;
     }
 
@@ -249,8 +351,17 @@
     const platform = getPlatform();
     const videoTitle = getVideoTitle();
 
-    if (!videoId || !platform) {
-      formError = 'Could not detect video information';
+    console.log('[TW Overlay] Video info:', { videoId, platform, videoTitle });
+
+    if (!videoId) {
+      formError = 'Could not detect video ID. Please ensure you are on a supported video page.';
+      console.error('[TW Overlay] No video ID detected');
+      return;
+    }
+
+    if (!platform || platform === 'unknown') {
+      formError = 'Could not detect streaming platform';
+      console.error('[TW Overlay] Unknown platform');
       return;
     }
 
@@ -258,7 +369,16 @@
     formError = '';
 
     try {
-      await SupabaseClient.submitTrigger({
+      console.log('[TW Overlay] Submitting trigger:', {
+        videoId,
+        platform,
+        categoryKey: selectedCategory,
+        startTime,
+        endTime,
+        description: description.trim() || undefined,
+      });
+
+      const success = await SupabaseClient.submitTrigger({
         videoId,
         platform,
         videoTitle,
@@ -269,14 +389,25 @@
         confidence: 75,
       });
 
-      // Success!
-      formSuccess = true;
-      setTimeout(() => {
-        showAddTriggerForm = false;
-        formSuccess = false;
-      }, 2000);
+      if (success) {
+        console.log('[TW Overlay] ✅ Trigger submitted successfully!');
+        // Success!
+        formSuccess = true;
+        // Clear cached data since we successfully submitted
+        cachedFormData = null;
+        setTimeout(() => {
+          showAddTriggerForm = false;
+          formSuccess = false;
+          manuallyExpanded = false;
+        }, 2500);
+      } else {
+        formError = 'Failed to submit trigger. Please check your internet connection and try again.';
+        console.error('[TW Overlay] ❌ Submit returned false');
+      }
     } catch (error) {
-      formError = error instanceof Error ? error.message : 'Failed to submit trigger';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      formError = `Failed to submit: ${errorMessage}`;
+      console.error('[TW Overlay] ❌ Submit error:', error);
     } finally {
       isSubmitting = false;
     }
@@ -355,25 +486,37 @@
   }
 
   function handleMouseEnter() {
-    isExpanded = true;
+    mouseOverOverlay = true;
+    if (!manuallyExpanded && !showAddTriggerForm) {
+      isExpanded = true;
+    }
     if (fadeOutTimer) clearTimeout(fadeOutTimer);
   }
 
   function handleMouseLeave() {
-    // Only collapse if not showing form
-    if (!showAddTriggerForm) {
-      isExpanded = false;
-      if (appearingMode === 'onMove') {
-        fadeOutTimer = window.setTimeout(() => {
+    mouseOverOverlay = false;
+    // Only collapse if not showing form, not manually expanded, and video is playing
+    if (!showAddTriggerForm && !manuallyExpanded && isVideoPlaying) {
+      // Add small delay before collapsing
+      setTimeout(() => {
+        if (!mouseOverOverlay && !manuallyExpanded && !showAddTriggerForm) {
+          isExpanded = false;
+        }
+      }, 300);
+    }
+    if (appearingMode === 'onMove' && !manuallyExpanded && !showAddTriggerForm) {
+      fadeOutTimer = window.setTimeout(() => {
+        if (!mouseOverOverlay && !manuallyExpanded) {
           visible = false;
-        }, fadeOutDelay);
-      }
+        }
+      }, fadeOutDelay);
     }
   }
 
   function handleCompactClick(e: MouseEvent) {
     // Allow expansion even during playback
     e.stopPropagation();
+    manuallyExpanded = !isExpanded;
     isExpanded = !isExpanded;
   }
 
@@ -422,18 +565,20 @@
         <!-- Timestamp -->
         <div class="tw-overlay-time">{currentTime}</div>
 
-        <!-- Quick add icon (always visible) -->
-        <button
-          class="tw-overlay-add-icon"
-          on:click|stopPropagation={handleQuickAdd}
-          title="Add trigger warning"
-          aria-label="Add trigger warning"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
+        <!-- Quick add icon (visible only when not expanded or form not showing) -->
+        {#if !isExpanded || !showAddTriggerForm}
+          <button
+            class="tw-overlay-add-icon"
+            on:click|stopPropagation={handleQuickAdd}
+            title="Add trigger warning"
+            aria-label="Add trigger warning"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        {/if}
       </div>
 
       <!-- Expanded content (horizontal expansion on both sides) -->
@@ -523,44 +668,61 @@
                     </div>
                   </div>
 
-                  <!-- Time range -->
+                  <!-- Time range with reset button -->
                   <div class="tw-form-section tw-time-section">
-                    <div class="tw-time-group">
-                      <label class="tw-form-label">Start</label>
-                      <div class="tw-time-input-group">
-                        <input
-                          type="number"
-                          bind:value={startTime}
-                          min="0"
-                          class="tw-time-input"
-                        />
-                        <button
-                          class="tw-capture-btn"
-                          on:click={() => startTime = captureCurrentTime()}
-                          title="Capture current time"
-                        >📍</button>
-                      </div>
-                      <span class="tw-time-display">{formatTime(startTime)}</span>
+                    <div class="tw-time-controls-header">
+                      <label class="tw-form-label">Time Range</label>
+                      <button
+                        class="tw-reset-btn"
+                        on:click={() => {
+                          const current = captureCurrentTime();
+                          startTime = Math.max(0, current - 5);
+                          endTime = current + 5;
+                        }}
+                        title="Reset to current time ± 5s"
+                      >
+                        🔄 Reset
+                      </button>
                     </div>
 
-                    <div class="tw-time-separator">→</div>
-
-                    <div class="tw-time-group">
-                      <label class="tw-form-label">End</label>
-                      <div class="tw-time-input-group">
-                        <input
-                          type="number"
-                          bind:value={endTime}
-                          min={startTime + 1}
-                          class="tw-time-input"
-                        />
-                        <button
-                          class="tw-capture-btn"
-                          on:click={() => endTime = captureCurrentTime()}
-                          title="Capture current time"
-                        >📍</button>
+                    <div class="tw-time-inputs-row">
+                      <div class="tw-time-group">
+                        <label class="tw-form-sublabel">Start</label>
+                        <div class="tw-time-input-group">
+                          <input
+                            type="number"
+                            bind:value={startTime}
+                            min="0"
+                            class="tw-time-input"
+                          />
+                          <button
+                            class="tw-capture-btn"
+                            on:click={() => startTime = captureCurrentTime()}
+                            title="Capture current time"
+                          >📍</button>
+                        </div>
+                        <span class="tw-time-display">{formatTime(startTime)}</span>
                       </div>
-                      <span class="tw-time-display">{formatTime(endTime)}</span>
+
+                      <div class="tw-time-separator">→</div>
+
+                      <div class="tw-time-group">
+                        <label class="tw-form-sublabel">End</label>
+                        <div class="tw-time-input-group">
+                          <input
+                            type="number"
+                            bind:value={endTime}
+                            min={startTime + 1}
+                            class="tw-time-input"
+                          />
+                          <button
+                            class="tw-capture-btn"
+                            on:click={() => endTime = captureCurrentTime()}
+                            title="Capture current time"
+                          >📍</button>
+                        </div>
+                        <span class="tw-time-display">{formatTime(endTime)}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -680,29 +842,29 @@
     display: flex;
     align-items: center;
     gap: 0;
-    background: rgba(139, 92, 246, 0.75); /* Direct opacity value */
+    background: rgba(139, 92, 246, 0.45); /* Significantly reduced opacity */
     border-radius: 24px;
-    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25); /* Softer shadow */
+    backdrop-filter: blur(20px); /* Stronger blur for glassmorphism */
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .tw-overlay:hover .tw-overlay-content {
-    background: rgba(168, 85, 247, 0.85);
-    box-shadow: 0 12px 40px rgba(168, 85, 247, 0.5);
+    background: rgba(168, 85, 247, 0.55); /* Slightly more visible on hover */
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.3);
   }
 
   .tw-overlay.has-warnings .tw-overlay-content {
-    background: rgba(239, 68, 68, 0.75);
-    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.45); /* Reduced opacity for warnings too */
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
   }
 
   .tw-overlay.has-warnings:hover .tw-overlay-content {
-    background: rgba(220, 38, 38, 0.85);
-    box-shadow: 0 12px 40px rgba(220, 38, 38, 0.5);
+    background: rgba(220, 38, 38, 0.55);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
   }
 
   /* Compact view */
@@ -1122,8 +1284,39 @@
   }
 
   .tw-time-section {
-    flex-direction: row;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tw-time-controls-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
+  }
+
+  .tw-reset-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    color: white;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tw-reset-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+  }
+
+  .tw-time-inputs-row {
+    display: flex;
+    align-items: flex-start;
     gap: 12px;
   }
 
@@ -1132,6 +1325,14 @@
     flex-direction: column;
     gap: 4px;
     flex: 1;
+  }
+
+  .tw-form-sublabel {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.8;
   }
 
   .tw-time-input-group {

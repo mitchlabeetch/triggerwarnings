@@ -28,6 +28,7 @@ export const DEFAULT_PROFILE = {
     theme: 'system',
     defaultProtection: 'none', // 'none' means just show warning banner, no video/audio protection
     categoryProtections: {},
+    helperMode: false, // Opt-in for community voting
 };
 // Cache expiration time (5 minutes)
 export const CACHE_EXPIRATION_MS = 5 * 60 * 1000;

@@ -36,6 +36,11 @@ export class SubtitleAnalyzer {
   constructor() {
     this.buildKeywordDictionary();
     this.translator = new SubtitleTranslator();
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🎬 [TW Subtitle Analyzer] INITIALIZED');
+    console.log(`📚 Loaded ${this.keywordDictionary.length} trigger keyword patterns`);
+    console.log(`🌐 Translation system: READY`);
+    console.log('═══════════════════════════════════════════════════════');
     logger.info('[TW SubtitleAnalyzer] 🎬 SubtitleAnalyzer initialized with', this.keywordDictionary.length, 'keyword patterns');
   }
 
@@ -157,17 +162,26 @@ export class SubtitleAnalyzer {
     this.video = video;
     const tracks = video.textTracks;
 
+    console.log('───────────────────────────────────────────────────────');
+    console.log(`🔍 [TW Subtitle Analyzer] Scanning video for subtitle tracks...`);
     logger.info(`[TW SubtitleAnalyzer] 🎬 Initializing with ${tracks.length} text tracks`);
 
     if (tracks.length === 0) {
+      console.log('❌ [TW Subtitle Analyzer] NO SUBTITLES FOUND');
+      console.log('💡 Note: Trigger detection will rely solely on database submissions');
+      console.log('   You can help by submitting triggers you notice!');
+      console.log('───────────────────────────────────────────────────────');
       logger.info('[TW SubtitleAnalyzer] ❌ No subtitle tracks found - subtitle-based analysis disabled');
       logger.info('[TW SubtitleAnalyzer] 💡 Trigger warnings will only appear from database submissions');
       return;
     }
 
+    console.log(`✅ [TW Subtitle Analyzer] Found ${tracks.length} subtitle track(s)`);
+
     // Log all available tracks for debugging
     for (let i = 0; i < tracks.length; i++) {
       const track = tracks[i];
+      console.log(`   📋 Track ${i + 1}: "${track.label || 'Untitled'}" [${track.language || 'unknown'}] (${track.kind})`);
       logger.debug(`[TW SubtitleAnalyzer] 📋 Track ${i}: ${track.label || 'Untitled'} (${track.language || 'unknown'}) [${track.kind}]`);
     }
 
@@ -200,11 +214,15 @@ export class SubtitleAnalyzer {
     const selectedTrack = englishTrack || fallbackTrack;
 
     if (!selectedTrack) {
+      console.log('❌ [TW Subtitle Analyzer] No usable subtitle tracks available');
+      console.log('💡 Trigger warnings will only appear from database submissions');
+      console.log('───────────────────────────────────────────────────────');
       logger.info('[TW SubtitleAnalyzer] ❌ No usable subtitle tracks available');
       logger.info('[TW SubtitleAnalyzer] 💡 Trigger warnings will only appear from database submissions');
       return;
     }
 
+    console.log(`✅ [TW Subtitle Analyzer] Selected track: "${selectedTrack.label || 'Untitled'}"`);
     logger.info(`[TW SubtitleAnalyzer] ✅ Subtitles found - Track: ${selectedTrack.label || 'Untitled'} (${selectedTrack.language || 'unknown'})`);
 
     // Determine if we need translation
@@ -217,6 +235,8 @@ export class SubtitleAnalyzer {
     const trackInfo = `${selectedTrack.label || 'Untitled'} (${this.sourceLanguage})`;
 
     if (this.needsTranslation) {
+      console.log(`🌐 [TW Subtitle Analyzer] Language: ${this.sourceLanguage.toUpperCase()} → Translation ENABLED`);
+      console.log('   Real-time translation will be used for trigger detection');
       logger.info(
         `[TW SubtitleAnalyzer] 🌐 Initialized with non-English track: ${trackInfo} - Translation enabled`
       );
@@ -224,8 +244,11 @@ export class SubtitleAnalyzer {
       // Start prefetching translations
       this.startPrefetching();
     } else {
+      console.log(`🎯 [TW Subtitle Analyzer] Language: ENGLISH → Real-time analysis ACTIVE`);
+      console.log('   Monitoring subtitles for trigger keywords...');
       logger.info(`[TW SubtitleAnalyzer] ✅ Initialized with English track: ${trackInfo} - Real-time analysis active`);
     }
+    console.log('───────────────────────────────────────────────────────');
   }
 
   /**
@@ -314,6 +337,15 @@ export class SubtitleAnalyzer {
         if (this.detectedTriggers.has(triggerId)) {
           continue; // Already detected
         }
+
+        console.log('═══════════════════════════════════════════════════════');
+        console.log(`🚨 [TW Subtitle Analyzer] TRIGGER DETECTED!`);
+        console.log(`   Category: ${trigger.category.toUpperCase()}`);
+        console.log(`   Keyword: "${keyword}"`);
+        console.log(`   Time: ${Math.floor(startTime)}s (${Math.floor(startTime / 60)}:${String(Math.floor(startTime % 60)).padStart(2, '0')})`);
+        console.log(`   Confidence: ${trigger.confidence}%`);
+        console.log(`   Context: "${text.substring(0, 80)}${text.length > 80 ? '...' : ''}"`);
+        console.log('═══════════════════════════════════════════════════════');
 
         logger.info(`[SubtitleAnalyzer] 🎯 Trigger detected! Category: ${trigger.category}, Keyword: "${keyword}", Time: ${Math.floor(startTime)}s, Text: "${text.substring(0, 50)}..."`);
 

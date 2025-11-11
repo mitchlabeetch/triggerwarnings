@@ -17,6 +17,13 @@ export interface DisplaySettings {
   transparency: number; // 0-100
   duration: number; // seconds
   spoilerFreeMode: boolean;
+  // Overlay customization settings
+  overlaySettings?: {
+    buttonColor?: string;
+    buttonOpacity?: number;
+    appearingMode?: 'always' | 'onMove' | 'onHover';
+    fadeOutDelay?: number;
+  };
 }
 
 export interface Profile {
@@ -42,6 +49,9 @@ export interface Profile {
   // Protection settings (what happens DURING the trigger)
   defaultProtection: ProtectionType;
   categoryProtections: Partial<Record<TriggerCategory, ProtectionType>>; // Per-category overrides
+
+  // Helper Mode - enable voting on warnings
+  helperMode: boolean;
 }
 
 export interface ProfileCreateInput {
@@ -61,4 +71,5 @@ export interface ProfileUpdateInput {
   theme?: Theme;
   defaultProtection?: ProtectionType;
   categoryProtections?: Partial<Record<TriggerCategory, ProtectionType>>;
+  helperMode?: boolean;
 }

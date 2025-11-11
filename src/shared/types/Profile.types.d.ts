@@ -12,6 +12,12 @@ export interface DisplaySettings {
     transparency: number;
     duration: number;
     spoilerFreeMode: boolean;
+    overlaySettings?: {
+        buttonColor?: string;
+        buttonOpacity?: number;
+        appearingMode?: 'always' | 'onMove' | 'onHover';
+        fadeOutDelay?: number;
+    };
 }
 export interface Profile {
     id: string;
@@ -28,6 +34,7 @@ export interface Profile {
     theme: Theme;
     defaultProtection: ProtectionType;
     categoryProtections: Partial<Record<TriggerCategory, ProtectionType>>;
+    helperMode: boolean;
 }
 export interface ProfileCreateInput {
     name: string;
@@ -45,5 +52,6 @@ export interface ProfileUpdateInput {
     theme?: Theme;
     defaultProtection?: ProtectionType;
     categoryProtections?: Partial<Record<TriggerCategory, ProtectionType>>;
+    helperMode?: boolean;
 }
 //# sourceMappingURL=Profile.types.d.ts.map

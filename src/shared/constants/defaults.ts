@@ -37,6 +37,7 @@ export const DEFAULT_PROFILE: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'> = 
   theme: 'system',
   defaultProtection: 'none', // 'none' means just show warning banner, no video/audio protection
   categoryProtections: {},
+  helperMode: false, // Opt-in for community voting
 };
 
 // Cache expiration time (5 minutes)

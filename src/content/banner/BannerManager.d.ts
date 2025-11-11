@@ -16,6 +16,7 @@ export declare class BannerManager {
     private fontSize;
     private transparency;
     private spoilerFreeMode;
+    private helperMode;
     constructor(provider: IStreamingProvider);
     initialize(): Promise<void>;
     private loadProfileSettings;

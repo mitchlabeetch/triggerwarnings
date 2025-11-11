@@ -15,6 +15,7 @@
   export let fontSize: number = 16;
   export let transparency: number = 85;
   export let spoilerFreeMode: boolean = false;
+  export let helperMode: boolean = false;
 
   let visible = false;
   let currentWarning: ActiveWarning | null = null;
@@ -158,7 +159,7 @@
       <!-- Actions -->
       <div class="tw-banner-actions">
         <!-- Helper Mode buttons (for active warnings) -->
-        {#if currentWarning.isActive && !hasVoted}
+        {#if helperMode && currentWarning.isActive && !hasVoted}
           <button
             class="tw-banner-btn tw-banner-btn-confirm"
             title="Confirm this warning is accurate"
