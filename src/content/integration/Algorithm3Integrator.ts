@@ -66,6 +66,12 @@ import { initializeProgressiveLearning, getProgressiveLearning, type LearningSta
 import { initializeCrossDeviceSync, getCrossDeviceSync, type SyncConfig } from '../storage/CrossDeviceSync';
 import { initializeUnifiedPipeline, getUnifiedPipeline, type AlgorithmDetection, type DetectionFeedback } from '../storage/UnifiedContributionPipeline';
 
+// Algorithm 3.0 Innovations (Phase 8)
+import { crossModalAttention, type ModalFeatures, type CrossModalResult } from '../crossmodal/CrossModalAttention';
+import { modalFusionTransformer, type TransformerInput, type TransformerFusionResult } from '../crossmodal/ModalFusionTransformer';
+import { contrastiveLearner, type ContrastiveEmbeddings, type ContrastiveResult } from '../crossmodal/ContrastiveLearner';
+import { selfSupervisedPretrainer, type UnlabeledSample, type TransferLearningResult } from '../crossmodal/SelfSupervisedPretrainer';
+
 const logger = new Logger('Algorithm3Integrator');
 
 /**
@@ -125,6 +131,12 @@ export interface EnhancedDetection {
   cacheHit?: boolean;
   parallelProcessingTimeMs?: number;
 
+  // Algorithm 3.0 enhancements (Phase 8)
+  crossModalResult?: CrossModalResult;
+  transformerFusion?: TransformerFusionResult;
+  contrastiveAlignment?: ContrastiveResult;
+  transferLearning?: TransferLearningResult;
+
   // User personalization
   userThreshold: number;
   shouldWarn: boolean;
@@ -172,6 +184,16 @@ interface IntegrationStats {
   cacheMisses: number;
   parallelDetections: number;
   avgProcessingLatencyMs: number;
+
+  // Phase 8 statistics
+  crossModalAttentionOps: number;
+  avgCrossModalBoost: number;
+  transformerFusions: number;
+  avgTransformerConfidence: number;
+  contrastiveAlignments: number;
+  avgContrastiveLoss: number;
+  transferLearningOps: number;
+  avgPretrainingBenefit: number;
 }
 
 /**
@@ -220,12 +242,24 @@ export class Algorithm3Integrator {
     cacheHits: 0,
     cacheMisses: 0,
     parallelDetections: 0,
-    avgProcessingLatencyMs: 0
+    avgProcessingLatencyMs: 0,
+    crossModalAttentionOps: 0,
+    avgCrossModalBoost: 0,
+    transformerFusions: 0,
+    avgTransformerConfidence: 0,
+    contrastiveAlignments: 0,
+    avgContrastiveLoss: 0,
+    transferLearningOps: 0,
+    avgPretrainingBenefit: 0
   };
 
   private confidenceBoosts: number[] = [];
   private falsePositiveReductions: number[] = [];
   private dependencyBoosts: number[] = [];
+  private crossModalBoosts: number[] = [];
+  private transformerConfidences: number[] = [];
+  private contrastiveLosses: number[] = [];
+  private pretrainingBenefits: number[] = [];
 
   constructor(profile: Profile) {
     this.profile = profile;
@@ -259,8 +293,8 @@ export class Algorithm3Integrator {
       }
     }
 
-    logger.info('[Algorithm3Integrator] 🚀 Algorithm 3.0 Integration Layer initialized (Phases 1-7)');
-    logger.info('[Algorithm3Integrator] ✅ All innovations active: Routing, Attention, Temporal, Fusion, Personalization, Hierarchical, Validation, Features, Dependencies, Adaptive Learning, Multi-Task, Few-Shot, Explainability, Incremental Processing, Smart Caching, Parallel Detection, Unified Contribution, Content Fingerprinting, Progressive Learning, Cross-Device Sync');
+    logger.info('[Algorithm3Integrator] 🚀 Algorithm 3.0 Integration Layer initialized (Phases 1-8)');
+    logger.info('[Algorithm3Integrator] ✅ All innovations active: Routing, Attention, Temporal, Fusion, Personalization, Hierarchical, Validation, Features, Dependencies, Adaptive Learning, Multi-Task, Few-Shot, Explainability, Incremental Processing, Smart Caching, Parallel Detection, Unified Contribution, Content Fingerprinting, Progressive Learning, Cross-Device Sync, Cross-Modal Attention, Modal Fusion Transformers, Contrastive Learning, Self-Supervised Pre-training');
     logger.info(`[Algorithm3Integrator] Enabled categories: ${profile.enabledCategories.join(', ')}`);
   }
 
@@ -422,7 +456,105 @@ export class Algorithm3Integrator {
     );
 
     // Use the maximum of regularized or fused confidence
-    const fusedConfidence = Math.max(regularized.regularizedConfidence, fusionResult.finalConfidence);
+    let fusedConfidence = Math.max(regularized.regularizedConfidence, fusionResult.finalConfidence);
+
+    // STEP 4.25: Apply Phase 8 - Cross-Modal Learning
+    let crossModalResult: CrossModalResult | undefined;
+    let transformerFusion: TransformerFusionResult | undefined;
+    let contrastiveAlignment: ContrastiveResult | undefined;
+    let transferLearning: TransferLearningResult | undefined;
+
+    // Extract modal features for Phase 8
+    const modalFeatures: ModalFeatures = {
+      visual: multiModalInput.visual ? this.extractFeatureVector(multiModalInput.visual.features) : undefined,
+      audio: multiModalInput.audio ? this.extractFeatureVector(multiModalInput.audio.features) : undefined,
+      text: multiModalInput.text ? this.extractTextEmbedding(multiModalInput.text.subtitleText || '') : undefined
+    };
+
+    // Innovation #27: Cross-Modal Attention
+    if (Object.values(modalFeatures).filter(f => f !== undefined).length >= 2) {
+      crossModalResult = crossModalAttention.computeAttention(detection.category, modalFeatures);
+      this.stats.crossModalAttentionOps++;
+      this.crossModalBoosts.push(crossModalResult.crossModalBoost);
+      this.updateAvgCrossModalBoost(crossModalResult.crossModalBoost);
+
+      // Apply cross-modal boost
+      fusedConfidence = Math.min(100, fusedConfidence + crossModalResult.crossModalBoost * 100);
+
+      reasoning.push(
+        `✅ Cross-Modal Attention: ${crossModalResult.dominantPair.join('-')} correlation=${crossModalResult.correlationScore.toFixed(2)}, ` +
+        `boost=+${(crossModalResult.crossModalBoost * 100).toFixed(1)}%`
+      );
+    }
+
+    // Innovation #28: Modal Fusion Transformer
+    if (modalFeatures.visual || modalFeatures.audio || modalFeatures.text) {
+      const transformerInput: TransformerInput = {
+        visual: modalFeatures.visual,
+        audio: modalFeatures.audio,
+        text: modalFeatures.text,
+        category: detection.category
+      };
+
+      transformerFusion = modalFusionTransformer.fuse(transformerInput, detection.category);
+      this.stats.transformerFusions++;
+      this.transformerConfidences.push(transformerFusion.confidence);
+      this.updateAvgTransformerConfidence(transformerFusion.confidence);
+
+      // Use transformer confidence if higher
+      fusedConfidence = Math.max(fusedConfidence, transformerFusion.confidence * 100);
+
+      reasoning.push(
+        `✅ Modal Fusion Transformer: deep fusion confidence=${(transformerFusion.confidence * 100).toFixed(1)}%, ` +
+        `${transformerFusion.layerOutputs.length} layers processed`
+      );
+    }
+
+    // Innovation #29: Contrastive Learning
+    if (modalFeatures.visual && modalFeatures.audio && modalFeatures.text) {
+      const contrastiveEmbeddings: ContrastiveEmbeddings = {
+        visual: modalFeatures.visual,
+        audio: modalFeatures.audio,
+        text: modalFeatures.text,
+        category: detection.category,
+        label: fusedConfidence > 70  // Positive if high confidence
+      };
+
+      contrastiveAlignment = contrastiveLearner.align(contrastiveEmbeddings);
+      this.stats.contrastiveAlignments++;
+      this.contrastiveLosses.push(contrastiveAlignment.contrastiveLoss);
+      this.updateAvgContrastiveLoss(contrastiveAlignment.contrastiveLoss);
+
+      reasoning.push(
+        `✅ Contrastive Learning: embeddings ${contrastiveAlignment.isAligned ? 'aligned' : 'misaligned'}, ` +
+        `loss=${contrastiveAlignment.contrastiveLoss.toFixed(3)}, ` +
+        `similarities: vis-aud=${contrastiveAlignment.similarityScores.visualAudio.toFixed(2)}`
+      );
+    }
+
+    // Innovation #30: Self-Supervised Pre-training (Transfer Learning)
+    if (modalFeatures.visual || modalFeatures.audio || modalFeatures.text) {
+      const unlabeledSample: UnlabeledSample = {
+        visual: modalFeatures.visual,
+        audio: modalFeatures.audio,
+        text: modalFeatures.text,
+        timestamp: detection.timestamp
+      };
+
+      transferLearning = selfSupervisedPretrainer.transfer(unlabeledSample, detection.category);
+      this.stats.transferLearningOps++;
+      this.pretrainingBenefits.push(transferLearning.pretrainingBenefit);
+      this.updateAvgPretrainingBenefit(transferLearning.pretrainingBenefit);
+
+      // Boost confidence based on pre-training benefit
+      const pretrainingBoost = transferLearning.pretrainingBenefit * transferLearning.confidence * 10;
+      fusedConfidence = Math.min(100, fusedConfidence + pretrainingBoost);
+
+      reasoning.push(
+        `✅ Self-Supervised Transfer: pre-training benefit=${(transferLearning.pretrainingBenefit * 100).toFixed(1)}%, ` +
+        `confidence=${(transferLearning.confidence * 100).toFixed(1)}%, boost=+${pretrainingBoost.toFixed(1)}%`
+      );
+    }
 
     // STEP 4.5: Apply conditional validation (Innovation #15)
     const detectionForValidation = {
@@ -531,6 +663,10 @@ export class Algorithm3Integrator {
       categoryFeatures,
       dependencyBoost: dependencyResult.totalBoost > 0 ? dependencyResult : undefined,
       adaptiveThreshold,
+      crossModalResult,
+      transformerFusion,
+      contrastiveAlignment,
+      transferLearning,
       userThreshold: personalizedResult.threshold,
       shouldWarn: finalShouldWarn,
       warning: this.createEnhancedWarning(detection, finalConfidence, reasoning),
@@ -796,6 +932,84 @@ export class Algorithm3Integrator {
   }
 
   /**
+   * Update average cross-modal boost (Phase 8)
+   */
+  private updateAvgCrossModalBoost(newBoost: number): void {
+    const n = this.crossModalBoosts.length;
+    this.stats.avgCrossModalBoost = ((this.stats.avgCrossModalBoost * (n - 1)) + newBoost) / n;
+  }
+
+  /**
+   * Update average transformer confidence (Phase 8)
+   */
+  private updateAvgTransformerConfidence(newConfidence: number): void {
+    const n = this.transformerConfidences.length;
+    this.stats.avgTransformerConfidence = ((this.stats.avgTransformerConfidence * (n - 1)) + newConfidence) / n;
+  }
+
+  /**
+   * Update average contrastive loss (Phase 8)
+   */
+  private updateAvgContrastiveLoss(newLoss: number): void {
+    const n = this.contrastiveLosses.length;
+    this.stats.avgContrastiveLoss = ((this.stats.avgContrastiveLoss * (n - 1)) + newLoss) / n;
+  }
+
+  /**
+   * Update average pre-training benefit (Phase 8)
+   */
+  private updateAvgPretrainingBenefit(newBenefit: number): void {
+    const n = this.pretrainingBenefits.length;
+    this.stats.avgPretrainingBenefit = ((this.stats.avgPretrainingBenefit * (n - 1)) + newBenefit) / n;
+  }
+
+  /**
+   * Extract feature vector from features object (Phase 8)
+   */
+  private extractFeatureVector(features: any): number[] {
+    // Convert feature object to numeric vector
+    const vector: number[] = [];
+
+    if (!features) return vector;
+
+    // Extract numeric features
+    for (const key of Object.keys(features)) {
+      const value = features[key];
+      if (typeof value === 'number') {
+        vector.push(value);
+      } else if (typeof value === 'boolean') {
+        vector.push(value ? 1 : 0);
+      } else if (Array.isArray(value) && value.every(v => typeof v === 'number')) {
+        vector.push(...value);
+      }
+    }
+
+    // Normalize to fixed size (256 dimensions, pad with zeros)
+    while (vector.length < 256) {
+      vector.push(0);
+    }
+
+    return vector.slice(0, 256);
+  }
+
+  /**
+   * Extract text embedding from subtitle (Phase 8)
+   */
+  private extractTextEmbedding(text: string): number[] {
+    // Simple text embedding: character-level features
+    const embedding: number[] = new Array(256).fill(0);
+
+    if (!text) return embedding;
+
+    // Character frequency features
+    for (let i = 0; i < Math.min(text.length, 256); i++) {
+      embedding[i] = text.charCodeAt(i) / 255;  // Normalize to [0, 1]
+    }
+
+    return embedding;
+  }
+
+  /**
    * Get comprehensive statistics
    */
   getStats(): IntegrationStats & {
@@ -841,7 +1055,11 @@ export class Algorithm3Integrator {
       contentFingerprinting: contentFingerprintCache.getStats(),
       progressiveLearning: getProgressiveLearning()?.getStats() || null,
       unifiedPipeline: getUnifiedPipeline()?.getStats() || null,
-      crossDeviceSync: getCrossDeviceSync()?.getStats() || null
+      crossDeviceSync: getCrossDeviceSync()?.getStats() || null,
+      crossModalAttention: crossModalAttention.getStats(),
+      modalFusionTransformer: modalFusionTransformer.getStats(),
+      contrastiveLearner: contrastiveLearner.getStats(),
+      selfSupervisedPretrainer: selfSupervisedPretrainer.getStats()
     };
   }
 
@@ -863,8 +1081,12 @@ export class Algorithm3Integrator {
     getProgressiveLearning()?.clear();
     getUnifiedPipeline()?.clear();
     getCrossDeviceSync()?.clear();
+    crossModalAttention.clear();
+    modalFusionTransformer.clear();
+    contrastiveLearner.clear();
+    selfSupervisedPretrainer.clear();
 
-    logger.info('[Algorithm3Integrator] 🧹 Cleared all state (Phases 1-7)');
+    logger.info('[Algorithm3Integrator] 🧹 Cleared all state (Phases 1-8)');
   }
 
   /**
@@ -875,7 +1097,7 @@ export class Algorithm3Integrator {
     parallelEngine.dispose();
     getProgressiveLearning()?.dispose();
     getCrossDeviceSync()?.dispose();
-    logger.info('[Algorithm3Integrator] 🛑 Algorithm 3.0 Integration Layer disposed (Phases 1-7)');
+    logger.info('[Algorithm3Integrator] 🛑 Algorithm 3.0 Integration Layer disposed (Phases 1-8)');
   }
 }
 
@@ -888,18 +1110,26 @@ export class Algorithm3Integrator {
  * ✅ Temporal smoothing reduces false positives by 25-30% (Innovation #4)
  * ✅ Three-stage hybrid fusion for superior accuracy (Innovation #1)
  * ✅ Per-category user personalization with 140 config points (Innovation #30)
+ * ✅ Cross-modal attention learning (Innovation #27 - Phase 8)
+ * ✅ Deep transformer fusion (Innovation #28 - Phase 8)
+ * ✅ Contrastive learning alignment (Innovation #29 - Phase 8)
+ * ✅ Self-supervised pre-training (Innovation #30 - Phase 8)
  * ✅ Adaptive learning from user feedback
  * ✅ Equal treatment for ALL 28 trigger categories
  * ✅ Research-backed: +25-35% overall accuracy improvement
  *
- * INTEGRATION FLOW:
+ * INTEGRATION FLOW (Phases 1-8):
  * 1. Legacy detection → convertToMultiModalInput()
  * 2. Route through DetectionRouter → specialized pipeline
  * 3. Compute attention weights → ModalityAttentionMechanism
  * 4. Apply temporal smoothing → TemporalCoherenceRegularizer
  * 5. Three-stage fusion → HybridFusionPipeline
- * 6. Check user sensitivity → PersonalizedDetector
- * 7. Emit enhanced warning (or suppress based on personalization)
+ * 6. Cross-modal attention → CrossModalAttention (Phase 8)
+ * 7. Transformer fusion → ModalFusionTransformer (Phase 8)
+ * 8. Contrastive alignment → ContrastiveLearner (Phase 8)
+ * 9. Transfer learning → SelfSupervisedPretrainer (Phase 8)
+ * 10. Check user sensitivity → PersonalizedDetector
+ * 11. Emit enhanced warning (or suppress based on personalization)
  *
  * BACKWARD COMPATIBILITY:
  * - Works with existing DetectionOrchestrator
