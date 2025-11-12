@@ -1228,9 +1228,9 @@
     <section class="night-mode-section section">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">Adapts to Your Environment</h2>
+                <h2 class="section-title">Nighttime Protection Mode</h2>
                 <p class="section-subtitle">
-                    Night mode adjusts colors for late-night viewing. Easier on your eyes, still fully functional. Try it now.
+                    Between 10pm-7am, sensitivity automatically increases by 10%. When you're tired or vulnerable, you get extra protection—plus easier-on-the-eyes dark UI.
                 </p>
             </div>
 
@@ -1246,61 +1246,72 @@
                     </div>
 
                     <div class="preview-content">
+                        <div class="sensitivity-boost-indicator" id="sensitivityBoost" style="display: none;">
+                            <div class="boost-icon">🌙</div>
+                            <div class="boost-content">
+                                <strong>Nighttime Mode Active</strong>
+                                <span>Detection sensitivity increased by 10% (10pm-7am)</span>
+                            </div>
+                        </div>
+
                         <div class="preview-setting">
                             <span class="preview-setting-label">Blood & Gore</span>
                             <div class="preview-slider">
-                                <div class="preview-slider-fill" style="width: 80%"></div>
+                                <div class="preview-slider-fill day-fill" style="width: 80%"></div>
+                                <div class="preview-slider-fill night-fill" style="width: 88%; display: none;"></div>
                             </div>
-                            <span class="preview-setting-value">High</span>
+                            <span class="preview-setting-value" id="bloodValue">High (80%)</span>
                         </div>
                         <div class="preview-setting">
                             <span class="preview-setting-label">Violence</span>
                             <div class="preview-slider">
-                                <div class="preview-slider-fill" style="width: 60%"></div>
+                                <div class="preview-slider-fill day-fill" style="width: 60%"></div>
+                                <div class="preview-slider-fill night-fill" style="width: 66%; display: none;"></div>
                             </div>
-                            <span class="preview-setting-value">Medium</span>
+                            <span class="preview-setting-value" id="violenceValue">Medium (60%)</span>
                         </div>
                         <div class="preview-setting">
                             <span class="preview-setting-label">Spiders</span>
                             <div class="preview-slider">
-                                <div class="preview-slider-fill" style="width: 90%"></div>
+                                <div class="preview-slider-fill day-fill" style="width: 90%"></div>
+                                <div class="preview-slider-fill night-fill" style="width: 99%; display: none;"></div>
                             </div>
-                            <span class="preview-setting-value">Very High</span>
+                            <span class="preview-setting-value" id="spidersValue">Very High (90%)</span>
                         </div>
                     </div>
 
                     <div class="preview-footer">
                         <div class="preview-stat">
-                            <span class="preview-stat-num">247</span>
+                            <span class="preview-stat-num" id="warningsNum">247</span>
                             <span class="preview-stat-label">Warnings Shown</span>
                         </div>
                         <div class="preview-stat">
                             <span class="preview-stat-num">96%</span>
-                            <span class="preview-stat-label">Accuracy</span>
+                            <span class="preview-stat-label">Base Accuracy</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="night-mode-features">
                     <div class="nm-feature">
-                        <span class="nm-icon">👁️</span>
+                        <span class="nm-icon">🛡️</span>
                         <div class="nm-content">
-                            <strong>Reduced Eye Strain</strong>
-                            <span>Darker colors reduce blue light for comfortable late-night streaming</span>
+                            <strong>+10% Sensitivity Boost</strong>
+                            <span>Algorithm becomes more cautious between 10pm-7am when you're more vulnerable</span>
                         </div>
                     </div>
                     <div class="nm-feature">
-                        <span class="nm-icon">🎨</span>
+                        <span class="nm-icon">👁️</span>
                         <div class="nm-content">
-                            <strong>Full Functionality</strong>
-                            <span>All features work identically in night mode—just easier to see</span>
+                            <strong>Dark UI Theme</strong>
+                            <span>Reduced eye strain with darker colors and lower blue light for late-night viewing</span>
                         </div>
                     </div>
                     <div class="nm-feature">
                         <span class="nm-icon">⚙️</span>
                         <div class="nm-content">
-                            <strong>Auto-Schedule</strong>
-                            <span>Optional: automatically switch at sunset/sunrise</span>
+                            <strong>Automatic or Manual</strong>
+                            <span>Auto-activates 10pm-7am, or toggle manually anytime for extra protection</span>
                         </div>
                     </div>
                 </div>
@@ -1314,107 +1325,148 @@
     <section class="use-cases-section section section-alt">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">Real Scenarios, Real Protection</h2>
+                <h2 class="section-title">Watch It In Action</h2>
                 <p class="section-subtitle">
-                    See how different people use Trigger Warnings to reclaim their streaming experience. Every story represents thousands of real users.
+                    Simulated watching experiences showing exactly what happens when triggers appear on screen.
                 </p>
             </div>
 
             <div class="use-cases-grid">
                 <div class="use-case-card">
                     <div class="use-case-header">
-                        <div class="use-case-avatar" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);">M</div>
+                        <div class="use-case-icon">🎬</div>
                         <div class="use-case-info">
-                            <h4 class="use-case-name">Maya, 28</h4>
-                            <span class="use-case-type">PTSD from accident</span>
+                            <h4 class="use-case-title">Action Movie • 15:32</h4>
+                            <span class="use-case-platform">Netflix • 1080p</span>
                         </div>
                     </div>
                     <div class="use-case-content">
-                        <p class="use-case-story">
-                            "Car accidents were my biggest trigger. I stopped watching shows entirely because unexpected crash scenes would send me into panic attacks. Now I can watch anything—I get 7 seconds warning before car accidents appear. That's enough time to breathe, prepare, or skip ahead. I've finished 12 shows this year."
-                        </p>
-                        <div class="use-case-settings">
-                            <strong>Key Settings:</strong>
-                            <div class="use-case-setting-tags">
-                                <span class="setting-tag high">Car Accidents: Very High</span>
-                                <span class="setting-tag medium">Blood: Medium</span>
-                                <span class="setting-tag low">Violence: Low</span>
+                        <div class="use-case-timeline">
+                            <div class="timeline-event">
+                                <span class="timeline-time">15:25</span>
+                                <span class="timeline-label">Warning appears</span>
                             </div>
+                            <div class="timeline-event highlight">
+                                <span class="timeline-time">15:32</span>
+                                <span class="timeline-label">Car crash scene begins</span>
+                            </div>
+                            <div class="timeline-event">
+                                <span class="timeline-time">15:55</span>
+                                <span class="timeline-label">Scene ends</span>
+                            </div>
+                        </div>
+                        <div class="use-case-behavior">
+                            <p><strong>What happens:</strong> 7 seconds before the crash, a purple warning overlay appears with countdown timer. Options: Skip 23s ahead, Watch with warning, or Adjust sensitivity.</p>
+                        </div>
+                        <div class="use-case-setting-tags">
+                            <span class="setting-tag high">Car Accidents: Very High</span>
+                            <span class="setting-tag medium">Violence: Medium</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="use-case-card">
                     <div class="use-case-header">
-                        <div class="use-case-avatar" style="background: linear-gradient(135deg, #ec4899, #f59e0b);">D</div>
+                        <div class="use-case-icon">🕷️</div>
                         <div class="use-case-info">
-                            <h4 class="use-case-name">David, 42</h4>
-                            <span class="use-case-type">Arachnophobia</span>
+                            <h4 class="use-case-title">Nature Documentary • 23:15</h4>
+                            <span class="use-case-platform">Disney+ • 4K HDR</span>
                         </div>
                     </div>
                     <div class="use-case-content">
-                        <p class="use-case-story">
-                            "I have severe arachnophobia. Even animated spiders on screen make my heart race. I tried watching nature documentaries but would encounter spiders without warning. With this extension, I finally watched Planet Earth II—all 7 episodes. The warnings gave me control. I could prepare mentally or skip those 30 seconds."
-                        </p>
-                        <div class="use-case-settings">
-                            <strong>Key Settings:</strong>
-                            <div class="use-case-setting-tags">
-                                <span class="setting-tag high">Spiders & Insects: Very High</span>
-                                <span class="setting-tag off">Most others: Off</span>
+                        <div class="use-case-timeline">
+                            <div class="timeline-event">
+                                <span class="timeline-time">23:08</span>
+                                <span class="timeline-label">Warning appears</span>
                             </div>
+                            <div class="timeline-event highlight">
+                                <span class="timeline-time">23:15</span>
+                                <span class="timeline-label">Tarantula close-up</span>
+                            </div>
+                            <div class="timeline-event">
+                                <span class="timeline-time">23:42</span>
+                                <span class="timeline-label">Scene ends</span>
+                            </div>
+                        </div>
+                        <div class="use-case-behavior">
+                            <p><strong>What happens:</strong> Spider detected in upcoming footage. Warning appears with thumbnail blur. User skips 27 seconds, continues watching forest scenes seamlessly.</p>
+                        </div>
+                        <div class="use-case-setting-tags">
+                            <span class="setting-tag high">Spiders: Very High</span>
+                            <span class="setting-tag off">Other animals: Off</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="use-case-card">
                     <div class="use-case-header">
-                        <div class="use-case-avatar" style="background: linear-gradient(135deg, #10b981, #3b82f6);">S</div>
+                        <div class="use-case-icon">⚡</div>
                         <div class="use-case-info">
-                            <h4 class="use-case-name">Sarah, 35</h4>
-                            <span class="use-case-type">Photosensitive epilepsy</span>
+                            <h4 class="use-case-title">Horror Series • S2E4 • 08:22</h4>
+                            <span class="use-case-platform">Hulu • 1080p</span>
                         </div>
                     </div>
                     <div class="use-case-content">
-                        <p class="use-case-story">
-                            "Flashing lights can trigger seizures for me. Most streaming services don't warn you—you just encounter strobe effects unexpectedly. This extension detects flashing patterns and gives me time to look away or adjust my screen brightness. It's made streaming safe again."
-                        </p>
-                        <div class="use-case-settings">
-                            <strong>Key Settings:</strong>
-                            <div class="use-case-setting-tags">
-                                <span class="setting-tag high">Flashing Lights: Very High</span>
-                                <span class="setting-tag medium">Loud Noises: Medium</span>
-                                <span class="setting-tag low">Violence: Low</span>
+                        <div class="use-case-timeline">
+                            <div class="timeline-event">
+                                <span class="timeline-time">08:15</span>
+                                <span class="timeline-label">Warning appears</span>
                             </div>
+                            <div class="timeline-event highlight">
+                                <span class="timeline-time">08:22</span>
+                                <span class="timeline-label">Strobe lighting effect</span>
+                            </div>
+                            <div class="timeline-event">
+                                <span class="timeline-time">08:28</span>
+                                <span class="timeline-label">Normal lighting resumes</span>
+                            </div>
+                        </div>
+                        <div class="use-case-behavior">
+                            <p><strong>What happens:</strong> Flashing pattern detected (12Hz, 6 seconds). Critical safety warning appears immediately. Video auto-pauses. User looks away, then resumes after effect ends.</p>
+                        </div>
+                        <div class="use-case-setting-tags">
+                            <span class="setting-tag high">Flashing Lights: Very High</span>
+                            <span class="setting-tag medium">Blood: Medium</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="use-case-card">
                     <div class="use-case-header">
-                        <div class="use-case-avatar" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">J</div>
+                        <div class="use-case-icon">🔞</div>
                         <div class="use-case-info">
-                            <h4 class="use-case-name">James, 19</h4>
-                            <span class="use-case-type">Family-friendly filtering</span>
+                            <h4 class="use-case-title">Drama Series • S1E3 • 32:10</h4>
+                            <span class="use-case-platform">Prime Video • 4K</span>
                         </div>
                     </div>
                     <div class="use-case-content">
-                        <p class="use-case-story">
-                            "I watch a lot of shows with my younger siblings. Sudden sexual content or graphic violence makes everyone uncomfortable. The warnings let me skip those scenes instantly—we can enjoy shows together without awkward moments. It's made family movie night way less stressful."
-                        </p>
-                        <div class="use-case-settings">
-                            <strong>Key Settings:</strong>
-                            <div class="use-case-setting-tags">
-                                <span class="setting-tag high">Sexual Content: High</span>
-                                <span class="setting-tag high">Violence: High</span>
-                                <span class="setting-tag medium">Language: Medium</span>
+                        <div class="use-case-timeline">
+                            <div class="timeline-event">
+                                <span class="timeline-time">32:03</span>
+                                <span class="timeline-label">Warning appears</span>
                             </div>
+                            <div class="timeline-event highlight">
+                                <span class="timeline-time">32:10</span>
+                                <span class="timeline-label">Intimate scene begins</span>
+                            </div>
+                            <div class="timeline-event">
+                                <span class="timeline-time">33:45</span>
+                                <span class="timeline-label">Scene ends</span>
+                            </div>
+                        </div>
+                        <div class="use-case-behavior">
+                            <p><strong>What happens:</strong> Sexual content detected. Family viewing mode active. Warning shows duration (1m 35s). One-click skip jumps to next scene. No awkward pausing needed.</p>
+                        </div>
+                        <div class="use-case-setting-tags">
+                            <span class="setting-tag high">Sexual Content: High</span>
+                            <span class="setting-tag high">Violence: High</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="use-cases-note">
-                <strong>These scenarios are fictional</strong> but represent real usage patterns from our 89,000+ users. Every sensitivity is valid. Your reasons are your own.
+                <strong>Simulated scenarios</strong> based on real detection patterns from 89,000+ active users across major streaming platforms.
             </div>
         </div>
     </section>
@@ -3164,9 +3216,57 @@
             padding: 32px;
         }
 
+        .sensitivity-boost-indicator {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            border-left: 4px solid var(--primary);
+            border-radius: 12px;
+            margin-bottom: 24px;
+            transition: all 0.5s ease;
+        }
+
+        .mode-preview.night .sensitivity-boost-indicator {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+            border-left-color: var(--primary-light);
+        }
+
+        .boost-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .boost-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .boost-content strong {
+            color: var(--primary);
+            font-size: 1rem;
+            transition: color 0.5s ease;
+        }
+
+        .mode-preview.night .boost-content strong {
+            color: var(--primary-light);
+        }
+
+        .boost-content span {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            transition: color 0.5s ease;
+        }
+
+        .mode-preview.night .boost-content span {
+            color: #a0aec0;
+        }
+
         .preview-setting {
             display: grid;
-            grid-template-columns: 180px 1fr 80px;
+            grid-template-columns: 180px 1fr 120px;
             align-items: center;
             gap: 16px;
             padding: 16px 0;
@@ -3192,6 +3292,7 @@
             background: var(--bg-light);
             border-radius: 4px;
             overflow: hidden;
+            position: relative;
             transition: background 0.5s ease;
         }
 
@@ -3203,13 +3304,27 @@
             height: 100%;
             background: var(--gradient-hero);
             border-radius: 4px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: all 0.5s ease;
+        }
+
+        .day-fill {
+            background: var(--gradient-hero);
+        }
+
+        .night-fill {
+            background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+            box-shadow: 0 0 8px rgba(167, 139, 250, 0.5);
         }
 
         .preview-setting-value {
             text-align: right;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             transition: color 0.5s ease;
+            font-family: 'Courier New', monospace;
         }
 
         .mode-preview.night .preview-setting-value {
@@ -3325,16 +3440,15 @@
             background: var(--gradient-light);
         }
 
-        .use-case-avatar {
+        .use-case-icon {
             width: 56px;
             height: 56px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: white;
+            font-size: 2rem;
+            background: var(--gradient-hero);
             flex-shrink: 0;
         }
 
@@ -3344,36 +3458,74 @@
             justify-content: center;
         }
 
-        .use-case-name {
-            font-size: 1.2rem;
+        .use-case-title {
+            font-size: 1.1rem;
             font-weight: 700;
             color: var(--text-dark);
             margin-bottom: 4px;
         }
 
-        .use-case-type {
+        .use-case-platform {
             font-size: 0.85rem;
             color: var(--text-light);
-            font-style: italic;
+            font-weight: 500;
         }
 
         .use-case-content {
             padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        .use-case-story {
+        .use-case-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 16px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .timeline-event {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .timeline-event.highlight {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .timeline-time {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .timeline-label {
+            color: var(--text-light);
+        }
+
+        .timeline-event.highlight .timeline-label {
+            color: var(--primary);
+        }
+
+        .use-case-behavior {
+            line-height: 1.7;
+        }
+
+        .use-case-behavior p {
             font-size: 0.95rem;
             color: var(--text-dark);
-            line-height: 1.7;
-            margin-bottom: 20px;
-            font-style: italic;
+            margin: 0;
         }
 
-        .use-case-settings strong {
-            display: block;
-            font-size: 0.9rem;
-            color: var(--text-dark);
-            margin-bottom: 12px;
+        .use-case-behavior strong {
+            color: var(--primary-dark);
         }
 
         .use-case-setting-tags {
@@ -3992,17 +4144,54 @@
             const preview = document.getElementById('modePreview');
             const icon = document.getElementById('modeIcon');
             const text = document.getElementById('modeText');
+            const boostIndicator = document.getElementById('sensitivityBoost');
+            const warningsNum = document.getElementById('warningsNum');
+
+            // Get slider elements
+            const dayFills = document.querySelectorAll('.day-fill');
+            const nightFills = document.querySelectorAll('.night-fill');
+            const bloodValue = document.getElementById('bloodValue');
+            const violenceValue = document.getElementById('violenceValue');
+            const spidersValue = document.getElementById('spidersValue');
 
             isNightMode = !isNightMode;
 
             if (isNightMode) {
+                // Enable night mode
                 preview.classList.add('night');
                 icon.textContent = '☀️';
                 text.textContent = 'Day Mode';
+                boostIndicator.style.display = 'flex';
+
+                // Show night sensitivity bars (+10%)
+                dayFills.forEach(fill => fill.style.display = 'none');
+                nightFills.forEach(fill => fill.style.display = 'block');
+
+                // Update value labels to show +10%
+                bloodValue.textContent = 'High (88% +10%)';
+                violenceValue.textContent = 'Medium (66% +10%)';
+                spidersValue.textContent = 'Very High (99% +10%)';
+
+                // Increase warnings count (more sensitive = more warnings)
+                warningsNum.textContent = '272';
             } else {
+                // Disable night mode
                 preview.classList.remove('night');
                 icon.textContent = '🌙';
                 text.textContent = 'Night Mode';
+                boostIndicator.style.display = 'none';
+
+                // Show day sensitivity bars (normal)
+                dayFills.forEach(fill => fill.style.display = 'block');
+                nightFills.forEach(fill => fill.style.display = 'none');
+
+                // Reset value labels
+                bloodValue.textContent = 'High (80%)';
+                violenceValue.textContent = 'Medium (60%)';
+                spidersValue.textContent = 'Very High (90%)';
+
+                // Reset warnings count
+                warningsNum.textContent = '247';
             }
         }
 
