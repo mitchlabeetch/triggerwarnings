@@ -747,6 +747,400 @@
         }
 
         /* ═══════════════════════════════════════════════════════════════ */
+        /* HERO HELPER MODE DEMO */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .helper-mode-demo-hero {
+            position: relative;
+        }
+
+        .hero-demo-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .hero-demo-screen {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 32px;
+            position: relative;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .demo-playing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .playing-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            @keyframes pulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.5; transform: scale(0.9); }
+            }
+        }
+
+        .helper-question-card {
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--text-dark);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            transition: opacity 0.4s ease;
+        }
+
+        .helper-question-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .helper-icon {
+            font-size: 1.5rem;
+        }
+
+        .helper-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--primary);
+        }
+
+        .helper-question-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .helper-question-text strong {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .helper-question-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .helper-answer-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid;
+        }
+
+        .helper-answer-btn:focus {
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .yes-btn {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .yes-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .no-btn {
+            background: white;
+            color: var(--text-dark);
+            border-color: var(--text-light);
+        }
+
+        .no-btn:hover {
+            background: var(--bg-light);
+            transform: translateY(-2px);
+        }
+
+        .skip-btn {
+            background: transparent;
+            color: var(--text-light);
+            border-color: transparent;
+        }
+
+        .skip-btn:hover {
+            color: var(--text-dark);
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .helper-privacy-note {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-style: italic;
+            margin: 0;
+        }
+
+        .privacy-icon {
+            font-size: 1rem;
+        }
+
+        .hero-demo-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: auto;
+        }
+
+        .demo-stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .demo-stat-icon {
+            font-size: 1.2rem;
+        }
+
+        .hero-demo-explanation {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .hero-demo-explanation strong {
+            font-weight: 700;
+            color: white;
+        }
+
+        .hero-demo-explanation em {
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .trigger-submission-note {
+            display: flex;
+            gap: 16px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-left: 4px solid rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+        }
+
+        .submission-note-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .submission-note-content {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            opacity: 0.95;
+        }
+
+        .submission-note-content strong {
+            font-weight: 700;
+            color: white;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-demo-screen {
+                padding: 20px;
+                min-height: 280px;
+            }
+
+            .helper-question-card {
+                padding: 20px;
+            }
+
+            .helper-question-actions {
+                flex-direction: column;
+            }
+
+            .helper-answer-btn {
+                min-width: 100%;
+            }
+
+            .hero-demo-stats {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .trigger-submission-note {
+                flex-direction: column;
+                gap: 12px;
+                padding: 16px;
+            }
+
+            .submission-note-icon {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* SCROLL NAVIGATION BUTTONS */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .scroll-to-categories-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 48px;
+        }
+
+        .scroll-to-categories-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 32px;
+            background: var(--gradient-hero);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .scroll-to-categories-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(139, 92, 246, 0.35);
+        }
+
+        .scroll-to-categories-btn:focus {
+            outline: 3px solid var(--primary);
+            outline-offset: 3px;
+        }
+
+        .scroll-btn-icon {
+            font-size: 1.3rem;
+        }
+
+        .scroll-btn-arrow {
+            font-size: 1.2rem;
+            animation: bounceDown 2s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            @keyframes bounceDown {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(4px); }
+            }
+        }
+
+        @media (max-width: 768px) {
+            .scroll-to-categories-btn {
+                padding: 14px 24px;
+                font-size: 0.95rem;
+            }
+
+            .scroll-btn-text {
+                display: none;
+            }
+
+            .scroll-to-categories-btn::after {
+                content: 'View All Categories';
+            }
+        }
+
+        /* Back to Top Button (Floating) */
+        .back-to-top-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 56px;
+            height: 56px;
+            background: var(--gradient-hero);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+
+        .back-to-top-btn.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .back-to-top-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 24px rgba(139, 92, 246, 0.4);
+        }
+
+        .back-to-top-btn:focus {
+            outline: 3px solid var(--primary);
+            outline-offset: 3px;
+        }
+
+        .back-to-top-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .back-to-top-btn {
+                bottom: 24px;
+                right: 24px;
+                width: 48px;
+                height: 48px;
+            }
+
+            .back-to-top-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        /* Ensure back-to-top doesn't interfere with low-stim toggle on mobile */
+        @media (max-width: 768px) {
+            .back-to-top-btn {
+                bottom: 24px;
+                right: 24px;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
         /* MOBILE RESPONSIVE */
         /* ═══════════════════════════════════════════════════════════════ */
 
@@ -887,43 +1281,66 @@
                     </p>
                 </div>
 
-                <!-- Protection Visualization -->
-                <div class="protection-visual" role="img" aria-label="Visual representation of warning protection">
-                    <div class="shield-icon">
-                        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path d="M50 10 L80 25 L80 55 Q80 75, 50 90 Q20 75, 20 55 L20 25 Z"
-                                  fill="rgba(255,255,255,0.2)"
-                                  stroke="rgba(255,255,255,0.6)"
-                                  stroke-width="2"/>
-                            <circle cx="50" cy="50" r="15" fill="rgba(255,255,255,0.4)"/>
-                        </svg>
-                    </div>
-                    <div class="protection-stats">
-                        <div class="stat-item">
-                            <span class="stat-number">96%</span>
-                            <span class="stat-label">Accuracy</span>
+                <!-- Helper Mode Demo - Interactive Questions While Watching -->
+                <div class="helper-mode-demo-hero" role="region" aria-label="Interactive demonstration of helper mode questions">
+                    <div class="hero-demo-container">
+                        <div class="hero-demo-screen">
+                            <div class="demo-playing-indicator">
+                                <div class="playing-dot"></div>
+                                <span>Watching: Stranger Things</span>
+                            </div>
+
+                            <!-- Helper Mode Question Overlay -->
+                            <div class="helper-question-card" id="heroHelperQuestion" style="opacity: 0;">
+                                <div class="helper-question-header">
+                                    <span class="helper-icon">🤝</span>
+                                    <span class="helper-title">Help Improve Detection</span>
+                                </div>
+                                <p class="helper-question-text">
+                                    Did this scene contain <strong>spiders or insects</strong>?
+                                </p>
+                                <div class="helper-question-actions">
+                                    <button class="helper-answer-btn yes-btn" onclick="answerHelperDemo('yes')" aria-label="Answer yes, scene contained spiders">
+                                        ✓ Yes
+                                    </button>
+                                    <button class="helper-answer-btn no-btn" onclick="answerHelperDemo('no')" aria-label="Answer no, scene did not contain spiders">
+                                        ✗ No
+                                    </button>
+                                    <button class="helper-answer-btn skip-btn" onclick="answerHelperDemo('skip')" aria-label="Skip this question">
+                                        Skip
+                                    </button>
+                                </div>
+                                <p class="helper-privacy-note">
+                                    <span class="privacy-icon">🔒</span>
+                                    Only for content you're monitoring. Anonymous & encrypted.
+                                </p>
+                            </div>
+
+                            <div class="hero-demo-stats">
+                                <div class="demo-stat-item">
+                                    <span class="demo-stat-icon">🎯</span>
+                                    <span class="demo-stat-text">96% Accuracy</span>
+                                </div>
+                                <div class="demo-stat-item">
+                                    <span class="demo-stat-icon">⚡</span>
+                                    <span class="demo-stat-text">5-10s Warning</span>
+                                </div>
+                                <div class="demo-stat-item">
+                                    <span class="demo-stat-icon">🛡️</span>
+                                    <span class="demo-stat-text">28 Categories</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-number">5-10s</span>
-                            <span class="stat-label">Advance Warning</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">28</span>
-                            <span class="stat-label">Categories</span>
-                        </div>
-                    </div>
-                    <div class="protection-features">
-                        <div class="feature-badge">
-                            <span class="feature-icon" aria-hidden="true">👁️</span>
-                            <span>Visual Detection</span>
-                        </div>
-                        <div class="feature-badge">
-                            <span class="feature-icon" aria-hidden="true">👂</span>
-                            <span>Audio Analysis</span>
-                        </div>
-                        <div class="feature-badge">
-                            <span class="feature-icon" aria-hidden="true">📝</span>
-                            <span>Text Scanning</span>
+
+                        <p class="hero-demo-explanation">
+                            <strong>Helper Mode (Optional):</strong> Smooth, discreet questions appear <em>only for content you're monitoring</em>. Your answers help improve the algorithm for everyone. When you contribute, the content ID is stored (anonymous & encrypted), but your viewing data never is.
+                        </p>
+
+                        <div class="trigger-submission-note">
+                            <div class="submission-note-icon">💡</div>
+                            <div class="submission-note-content">
+                                <strong>Easily add triggers while viewing:</strong> Spotted something we missed? Click the extension icon to report a new trigger. Only the content ID is stored (anonymous & encrypted) to improve detection. Your privacy remains absolute.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -959,6 +1376,17 @@
                     <div class="stat-large">100%</div>
                     <div class="stat-label-large">Private & Local</div>
                 </div>
+            </div>
+
+            <!-- Scroll to Categories Button -->
+            <div class="scroll-to-categories-container">
+                <button class="scroll-to-categories-btn"
+                        onclick="document.querySelector('.categories-section').scrollIntoView({behavior: 'smooth'})"
+                        aria-label="Scroll down to view complete list of 28 protected categories">
+                    <span class="scroll-btn-icon">📋</span>
+                    <span class="scroll-btn-text">View All 28 Protected Categories</span>
+                    <span class="scroll-btn-arrow" aria-hidden="true">↓</span>
+                </button>
             </div>
         </div>
     </section>
@@ -4609,7 +5037,84 @@
                     toggle.setAttribute('aria-pressed', 'true');
                 }
             }
+
+            // Animate hero helper question appearing after delay
+            setTimeout(function() {
+                const helperQuestion = document.getElementById('heroHelperQuestion');
+                if (helperQuestion) {
+                    helperQuestion.style.opacity = '1';
+                }
+            }, 2000);
         });
+
+        // ═══════════════════════════════════════════════════════════════
+        // HERO HELPER MODE DEMO INTERACTION
+        // ═══════════════════════════════════════════════════════════════
+
+        function answerHelperDemo(answer) {
+            const helperQuestion = document.getElementById('heroHelperQuestion');
+            if (!helperQuestion) return;
+
+            // Fade out the question
+            helperQuestion.style.opacity = '0';
+
+            // After animation, show it again with a different question after delay
+            setTimeout(function() {
+                // Cycle through different trigger types
+                const questions = [
+                    'Did this scene contain <strong>spiders or insects</strong>?',
+                    'Did this scene contain <strong>blood or gore</strong>?',
+                    'Did this scene contain <strong>flashing lights</strong>?',
+                    'Did this scene contain <strong>jump scares</strong>?'
+                ];
+
+                const currentText = helperQuestion.querySelector('.helper-question-text');
+                if (currentText) {
+                    const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+                    currentText.innerHTML = randomQuestion;
+                }
+
+                // Fade back in
+                setTimeout(function() {
+                    helperQuestion.style.opacity = '1';
+                }, 100);
+            }, 2000);
+        }
+        // ═══════════════════════════════════════════════════════════════
+        // BACK TO TOP BUTTON - Show/Hide on Scroll
+        // ═══════════════════════════════════════════════════════════════
+
+        const backToTopBtn = document.getElementById('backToTopBtn');
+
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 500) {
+                if (backToTopBtn) {
+                    backToTopBtn.classList.add('visible');
+                }
+            } else {
+                if (backToTopBtn) {
+                    backToTopBtn.classList.remove('visible');
+                }
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
     </script>
+
+    <!-- Back to Top Button (Floating) -->
+    <button class="back-to-top-btn"
+            id="backToTopBtn"
+            onclick="scrollToTop()"
+            aria-label="Scroll back to top of page"
+            title="Back to Top">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
 </body>
 </html>
