@@ -89,6 +89,74 @@
         }
 
         /* ═══════════════════════════════════════════════════════════════ */
+        /* NO JAVASCRIPT FALLBACK BANNER */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .no-js-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            padding: 24px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+        }
+
+        .no-js-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .no-js-content h2 {
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .no-js-content p {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .no-js-options {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin: 16px 0;
+            text-align: left;
+        }
+
+        .no-js-options ul {
+            margin-top: 12px;
+            margin-left: 24px;
+        }
+
+        .no-js-options li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .no-js-link {
+            color: white;
+            text-decoration: underline;
+            font-weight: 700;
+        }
+
+        .no-js-link:hover {
+            text-decoration: none;
+        }
+
+        .no-js-note {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
         /* LAYOUT UTILITIES */
         /* ═══════════════════════════════════════════════════════════════ */
 
@@ -568,6 +636,26 @@
     </style>
 </head>
 <body>
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- NO JAVASCRIPT FALLBACK -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <noscript>
+        <div class="no-js-banner">
+            <div class="no-js-content">
+                <h2>⚠️ JavaScript Required for Interactive Demos</h2>
+                <p>This page includes interactive demonstrations that require JavaScript to function. However, you can still learn about Trigger Warnings!</p>
+                <div class="no-js-options">
+                    <p><strong>Options:</strong></p>
+                    <ul>
+                        <li>Enable JavaScript to experience the full interactive demos</li>
+                        <li>Or visit our <a href="/landing/index-static.html" class="no-js-link">HTML-only version</a> with all the same information (no demos, but fully accessible)</li>
+                    </ul>
+                </div>
+                <p class="no-js-note">The extension itself does not require JavaScript on this page—only the demo features do.</p>
+            </div>
+        </div>
+    </noscript>
+
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- HERO SECTION -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
