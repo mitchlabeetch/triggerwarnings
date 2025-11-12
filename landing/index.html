@@ -777,147 +777,261 @@
         }
 
         /* ═══════════════════════════════════════════════════════════════ */
-        /* HERO VISUAL - Protection Shield */
+        /* HERO BACKGROUND SLOGAN */
         /* ═══════════════════════════════════════════════════════════════ */
 
-        .hero-visual {
+        .hero-background-slogan {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 6rem;
+            font-weight: 200;
+            font-family: 'Inter', sans-serif;
+            color: rgba(255, 255, 255, 0.08);
+            white-space: nowrap;
+            pointer-events: none;
+            letter-spacing: -0.02em;
+            user-select: none;
+        }
+
+        @media (max-width: 1200px) {
+            .hero-background-slogan {
+                font-size: 4rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero-background-slogan {
+                font-size: 2.5rem;
+                white-space: normal;
+                text-align: center;
+                max-width: 90%;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* HERO DEMO VISUAL - Live Detection */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .hero-demo-visual {
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .protection-visual {
-            position: relative;
+        .hero-subtitle-visual {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
             width: 100%;
-            max-width: 400px;
-            aspect-ratio: 1;
+            max-width: 500px;
+        }
+
+        .hero-player-screen {
+            background: #000;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .player-content {
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-bottom: 60px;
         }
 
-        .shield-icon {
-            font-size: 8rem;
-            position: relative;
-            z-index: 3;
-            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
-        }
-
-        .protection-layers {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            height: 100%;
-        }
-
-        .protection-layer {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-        }
-
-        .layer-1 {
-            width: 100%;
-            height: 100%;
-        }
-
-        .layer-2 {
-            width: 75%;
-            height: 75%;
-        }
-
-        .layer-3 {
-            width: 50%;
-            height: 50%;
+        .play-indicator {
+            font-size: 1.2rem;
+            color: #10b981;
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .protection-layer {
-                animation: ripple 3s ease-out infinite;
-            }
-
-            .layer-1 {
-                animation-delay: 0s;
-            }
-
-            .layer-2 {
-                animation-delay: 1s;
-            }
-
-            .layer-3 {
-                animation-delay: 2s;
-            }
-
-            @keyframes ripple {
-                0% {
-                    opacity: 0.8;
-                    transform: translate(-50%, -50%) scale(0.95);
-                }
-                50% {
-                    opacity: 0.4;
-                    transform: translate(-50%, -50%) scale(1);
-                }
-                100% {
-                    opacity: 0.8;
-                    transform: translate(-50%, -50%) scale(0.95);
-                }
+            .play-indicator {
+                animation: pulse 2s ease-in-out infinite;
             }
         }
 
-        .protection-stats-hero {
+        .hero-subtitle-container {
             position: absolute;
-            bottom: -80px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            width: 100%;
-            max-width: 350px;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .stat-badge {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 20px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 16px;
+        .hero-subtitle-line {
+            color: white;
             font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .hero-subtitle-line.scanning {
+                animation: subtitlePulse 2s infinite;
+            }
+
+            @keyframes subtitlePulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+        }
+
+        .keyword-highlight {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 2px 6px;
+            border-radius: 4px;
             font-weight: 600;
         }
 
-        .badge-icon {
-            font-size: 1.3rem;
+        @media (prefers-reduced-motion: no-preference) {
+            .keyword-highlight {
+                animation: keywordGlow 1.5s ease-in-out infinite;
+            }
+
+            @keyframes keywordGlow {
+                0%, 100% { background: rgba(239, 68, 68, 0.3); }
+                50% { background: rgba(239, 68, 68, 0.5); }
+            }
+        }
+
+        .hero-detection-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            color: white;
+            font-weight: 600;
+        }
+
+        .detection-text {
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            color: var(--accent-light);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .hero-detection-arrow {
+                animation: arrowFlow 1.5s infinite;
+            }
+
+            @keyframes arrowFlow {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-8px); }
+            }
+        }
+
+        .hero-warning-banner {
+            background: var(--gradient-hero);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .hero-warning-banner {
+                animation: warningGlow 2s infinite;
+            }
+
+            @keyframes warningGlow {
+                0%, 100% { box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3); }
+                50% { box-shadow: 0 15px 40px rgba(139, 92, 246, 0.5); }
+            }
+        }
+
+        .warning-icon-hero {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .warning-content-hero {
+            flex: 1;
+        }
+
+        .warning-title-hero {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: white;
+        }
+
+        .warning-timer-hero {
+            font-size: 0.9rem;
+            opacity: 0.95;
+            color: white;
+        }
+
+        .warning-actions-hero {
+            display: flex;
+            gap: 8px;
+            flex-direction: column;
+        }
+
+        .hero-action-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            white-space: nowrap;
+        }
+
+        .hero-action-btn:not(.secondary) {
+            background: white;
+            color: var(--primary);
+        }
+
+        .hero-action-btn:not(.secondary):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .hero-action-btn.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .hero-action-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         @media (max-width: 968px) {
             .hero-content {
                 grid-template-columns: 1fr;
-                gap: 80px;
+                gap: 60px;
             }
 
-            .protection-visual {
-                max-width: 300px;
-                margin: 0 auto;
+            .hero-player-screen {
+                padding: 20px;
+                min-height: 160px;
             }
 
-            .shield-icon {
-                font-size: 6rem;
+            .hero-subtitle-visual {
+                max-width: 100%;
             }
 
-            .protection-stats-hero {
-                position: static;
-                transform: none;
-                margin-top: 40px;
+            .warning-actions-hero {
+                flex-direction: row;
             }
         }
 
@@ -1163,6 +1277,11 @@
     <!-- HERO SECTION -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <section class="hero" role="banner">
+        <!-- Background Slogan -->
+        <div class="hero-background-slogan" aria-hidden="true">
+            No one should pay to feel safe
+        </div>
+
         <!-- Low Stimulation Mode Toggle (Top Right) -->
         <button class="low-stim-toggle"
                 id="lowStimToggle"
@@ -1191,7 +1310,7 @@
                         Real-Time Protection • 100% Private • Free Forever
                     </div>
                     <p class="hero-subtitle">
-                        Block what you don't want to see. Enjoy what you do. Get 5-10 seconds of advance warning before sensitive content appears. <strong>Your safety. Your choice. Always private, always free.</strong>
+                        Watch what you love. Skip what you don't. Get 5-10 seconds of advance warning before sensitive content appears. <strong>Your safety. Your choice. Always private, always free.</strong>
                     </p>
                     <p class="hero-platforms" role="region" aria-label="Supported platforms and browsers">
                         <span class="platforms-label">Works on:</span>
@@ -1215,31 +1334,46 @@
                         </a>
                     </div>
                     <p class="free-forever-note" role="status" aria-live="polite">
-                        <strong>No one should have to pay to be safe.</strong> This extension is completely free, forever. No trials, no premium tiers, no hidden costs.
+                        <strong>💜 100% FREE FOREVER 💜</strong><br>
+                        No one should have to pay to feel safe. This extension is completely free, forever. No trials, no premium tiers, no hidden costs.
                     </p>
                 </div>
 
-                <!-- Hero Visual - Protection Shield -->
-                <div class="hero-visual" role="presentation" aria-hidden="true">
-                    <div class="protection-visual">
-                        <div class="shield-icon">🛡️</div>
-                        <div class="protection-layers">
-                            <div class="protection-layer layer-1" data-label="Visual Detection"></div>
-                            <div class="protection-layer layer-2" data-label="Audio Analysis"></div>
-                            <div class="protection-layer layer-3" data-label="Subtitle Scanning"></div>
+                <!-- Hero Visual - Live Detection Demo -->
+                <div class="hero-demo-visual" role="presentation" aria-label="Live demonstration of trigger detection">
+                    <div class="hero-subtitle-visual">
+                        <!-- Simulated Video Player with Subtitles -->
+                        <div class="hero-player-screen">
+                            <div class="player-content">
+                                <span class="play-indicator">▶</span>
+                                <span class="playing-text">Watching...</span>
+                            </div>
+
+                            <!-- Subtitle Examples -->
+                            <div class="hero-subtitle-container">
+                                <div class="hero-subtitle-line scanning">
+                                    There was <span class="keyword-highlight">blood</span> everywhere at the scene.
+                                </div>
+                            </div>
                         </div>
-                        <div class="protection-stats-hero">
-                            <div class="stat-badge">
-                                <span class="badge-icon">🎯</span>
-                                <span class="badge-text">96% Accuracy</span>
+
+                        <!-- Detection Flow Arrow -->
+                        <div class="hero-detection-arrow">
+                            <span>→</span>
+                            <span class="detection-text">DETECTED!</span>
+                            <span>→</span>
+                        </div>
+
+                        <!-- Warning Banner -->
+                        <div class="hero-warning-banner">
+                            <div class="warning-icon-hero">⚠️</div>
+                            <div class="warning-content-hero">
+                                <div class="warning-title-hero">Blood & Gore Warning</div>
+                                <div class="warning-timer-hero">Appearing in <strong>7s</strong></div>
                             </div>
-                            <div class="stat-badge">
-                                <span class="badge-icon">⚡</span>
-                                <span class="badge-text">5-10s Early Warning</span>
-                            </div>
-                            <div class="stat-badge">
-                                <span class="badge-icon">🔒</span>
-                                <span class="badge-text">100% Private</span>
+                            <div class="warning-actions-hero">
+                                <button class="hero-action-btn">Skip</button>
+                                <button class="hero-action-btn secondary">Continue</button>
                             </div>
                         </div>
                     </div>
@@ -2375,7 +2509,7 @@
                 <div class="footer-text">
                     <p>© 2026 Trigger Warnings. Free forever. Made with care.</p>
                     <p style="font-size: 0.95rem; opacity: 0.8; margin-top: 8px;">
-                        <strong>No one should have to pay to be safe.</strong> This extension is 100% free, forever.
+                        <strong>No one should have to pay to feel safe.</strong> This extension is 100% free, forever.
                     </p>
                 </div>
             </div>
