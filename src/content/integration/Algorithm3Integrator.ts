@@ -45,6 +45,11 @@ import { personalizedDetector, type UserProfile } from '../personalization/Perso
 import { hierarchicalDetector, type HierarchicalResult } from '../routing/HierarchicalDetector';
 import { conditionalValidator, type ValidationResult, VALIDATION_THRESHOLDS } from '../validation/ConditionalValidator';
 
+// Algorithm 3.0 Innovations (Phase 4)
+import { categoryFeatureExtractor, type CategoryFeatures, type MultiModalInput as FeatureMultiModalInput } from '../features/CategoryFeatureExtractor';
+import { categoryDependencyGraph, type CategoryDetection, type DependencyAnalysisResult } from '../graph/CategoryDependencyGraph';
+import { AdaptiveThresholdLearner, type UserFeedback } from '../learning/AdaptiveThresholdLearner';
+
 const logger = new Logger('Algorithm3Integrator');
 
 /**
@@ -89,6 +94,11 @@ export interface EnhancedDetection {
   validationResult?: ValidationResult;
   validatedConfidence: number;
 
+  // Algorithm 3.0 enhancements (Phase 4)
+  categoryFeatures?: CategoryFeatures;
+  dependencyBoost?: DependencyAnalysisResult;
+  adaptiveThreshold?: number;
+
   // User personalization
   userThreshold: number;
   shouldWarn: boolean;
@@ -117,6 +127,12 @@ interface IntegrationStats {
   warningsSuppressed: number;
   avgConfidenceBoost: number;
   avgFalsePositiveReduction: number;
+
+  // Phase 4 statistics
+  featureExtractions: number;
+  dependencyBoosts: number;
+  avgDependencyBoost: number;
+  adaptiveThresholdAdjustments: number;
 }
 
 /**
@@ -135,6 +151,9 @@ export class Algorithm3Integrator {
   // Emitted warnings (deduplication)
   private emittedWarnings: Set<string> = new Set();
 
+  // Phase 4: Adaptive threshold learner
+  private adaptiveThresholdLearner: AdaptiveThresholdLearner;
+
   // Statistics
   private stats: IntegrationStats = {
     totalDetections: 0,
@@ -149,11 +168,16 @@ export class Algorithm3Integrator {
     warningsEmitted: 0,
     warningsSuppressed: 0,
     avgConfidenceBoost: 0,
-    avgFalsePositiveReduction: 0
+    avgFalsePositiveReduction: 0,
+    featureExtractions: 0,
+    dependencyBoosts: 0,
+    avgDependencyBoost: 0,
+    adaptiveThresholdAdjustments: 0
   };
 
   private confidenceBoosts: number[] = [];
   private falsePositiveReductions: number[] = [];
+  private dependencyBoosts: number[] = [];
 
   constructor(profile: Profile) {
     this.profile = profile;
@@ -161,7 +185,10 @@ export class Algorithm3Integrator {
     // Initialize user profile for personalized detector
     this.userProfile = this.convertProfileToUserProfile(profile);
 
-    logger.info('[Algorithm3Integrator] 🚀 Algorithm 3.0 Integration Layer initialized');
+    // Initialize adaptive threshold learner (Phase 4)
+    this.adaptiveThresholdLearner = new AdaptiveThresholdLearner(profile.userId || 'default');
+
+    logger.info('[Algorithm3Integrator] 🚀 Algorithm 3.0 Integration Layer initialized (Phases 1-4)');
     logger.info(`[Algorithm3Integrator] Enabled categories: ${profile.enabledCategories.join(', ')}`);
   }
 
@@ -224,6 +251,15 @@ export class Algorithm3Integrator {
       `Time: ${hierarchicalResult.totalProcessingTimeMs.toFixed(2)}ms`
     );
 
+    // STEP 0.5: Extract category-specific features (Innovation #16 - Phase 4)
+    const categoryFeatures = categoryFeatureExtractor.extract(detection.category, multiModalInput as FeatureMultiModalInput);
+    this.stats.featureExtractions++;
+
+    reasoning.push(
+      `✅ Category-specific features extracted: ${Object.keys(categoryFeatures.features).length} features, ` +
+      `confidence boost: +${(categoryFeatures.confidence - detection.confidence).toFixed(1)}%`
+    );
+
     // STEP 1: Route through DetectionRouter (Innovation #13)
     const routed = detectionRouter.route(detection.category, multiModalInput);
     this.stats.routedDetections++;
@@ -277,6 +313,28 @@ export class Algorithm3Integrator {
       `(coherence: ${regularized.coherenceScore.toFixed(1)}, boost: +${(regularized.temporalBoost * 100).toFixed(1)}%, ` +
       `penalty: -${(regularized.temporalPenalty * 100).toFixed(1)}%)`
     );
+
+    // STEP 3.5: Apply dependency graph context boosting (Innovation #17 - Phase 4)
+    // Add detection to graph for future context
+    const categoryDetection: CategoryDetection = {
+      category: detection.category,
+      confidence: regularized.regularizedConfidence,
+      timestamp: detection.timestamp
+    };
+    categoryDependencyGraph.addDetection(categoryDetection);
+
+    // Analyze with dependency graph context
+    const dependencyResult = categoryDependencyGraph.analyzeWithContext(categoryDetection);
+    if (dependencyResult.totalBoost > 0) {
+      this.stats.dependencyBoosts++;
+      this.dependencyBoosts.push(dependencyResult.totalBoost);
+      this.updateAvgDependencyBoost(dependencyResult.totalBoost);
+
+      reasoning.push(
+        `✅ Dependency graph boost: +${dependencyResult.totalBoost.toFixed(1)}% from ${dependencyResult.boosts.length} related categories | ` +
+        `${dependencyResult.boosts.map(b => `${b.fromCategory}(+${b.boostAmount.toFixed(1)}%)`).join(', ')}`
+      );
+    }
 
     // STEP 4: Apply hybrid fusion (Innovation #1)
     // Collect all recent detections for this category to enable multi-modal fusion
@@ -360,6 +418,27 @@ export class Algorithm3Integrator {
       `decision=${personalizedResult.shouldWarn ? 'WARN' : 'SUPPRESS'}`
     );
 
+    // STEP 6: Apply adaptive threshold learning (Innovation #18 - Phase 4)
+    const adaptiveThreshold = this.adaptiveThresholdLearner.getThreshold(detection.category);
+    const shouldWarnAdaptive = finalConfidence >= adaptiveThreshold;
+
+    // Use adaptive threshold if it overrides personalization (more restrictive)
+    const finalShouldWarn = personalizedResult.shouldWarn && shouldWarnAdaptive;
+
+    if (!shouldWarnAdaptive && personalizedResult.shouldWarn) {
+      // Adaptive threshold suppressed warning
+      reasoning.push(
+        `✅ Adaptive threshold learning: threshold=${adaptiveThreshold.toFixed(1)}%, ` +
+        `confidence=${finalConfidence.toFixed(1)}% → SUPPRESSED (learned user preference)`
+      );
+    } else if (adaptiveThreshold !== this.adaptiveThresholdLearner.getThresholdData(detection.category)?.defaultThreshold) {
+      // Threshold has been learned
+      reasoning.push(
+        `✅ Adaptive threshold learning: using learned threshold ${adaptiveThreshold.toFixed(1)}% ` +
+        `(default: ${this.adaptiveThresholdLearner.getThresholdData(detection.category)?.defaultThreshold.toFixed(1)}%)`
+      );
+    }
+
     // Create enhanced detection
     const enhanced: EnhancedDetection = {
       category: detection.category,
@@ -377,14 +456,17 @@ export class Algorithm3Integrator {
       hierarchicalResult,
       validationResult,
       validatedConfidence: finalConfidence,
+      categoryFeatures,
+      dependencyBoost: dependencyResult.totalBoost > 0 ? dependencyResult : undefined,
+      adaptiveThreshold,
       userThreshold: personalizedResult.threshold,
-      shouldWarn: personalizedResult.shouldWarn,
+      shouldWarn: finalShouldWarn,
       warning: this.createEnhancedWarning(detection, finalConfidence, reasoning),
       reasoning
     };
 
-    // Emit or suppress based on personalization
-    if (personalizedResult.shouldWarn) {
+    // Emit or suppress based on personalization + adaptive thresholds
+    if (finalShouldWarn) {
       this.stats.warningsEmitted++;
 
       logger.info(
@@ -620,6 +702,28 @@ export class Algorithm3Integrator {
   }
 
   /**
+   * Process user feedback for adaptive threshold learning (Phase 4)
+   */
+  processFeedback(feedback: UserFeedback): void {
+    const adjustment = this.adaptiveThresholdLearner.processFeedback(feedback);
+    if (adjustment) {
+      this.stats.adaptiveThresholdAdjustments++;
+      logger.info(
+        `[Algorithm3Integrator] 📚 Adaptive threshold adjusted for ${feedback.category} | ` +
+        `${adjustment.oldThreshold.toFixed(1)}% → ${adjustment.newThreshold.toFixed(1)}%`
+      );
+    }
+  }
+
+  /**
+   * Update average dependency boost
+   */
+  private updateAvgDependencyBoost(newBoost: number): void {
+    const n = this.dependencyBoosts.length;
+    this.stats.avgDependencyBoost = ((this.stats.avgDependencyBoost * (n - 1)) + newBoost) / n;
+  }
+
+  /**
    * Get comprehensive statistics
    */
   getStats(): IntegrationStats & {
@@ -629,6 +733,9 @@ export class Algorithm3Integrator {
     personalization: any;
     hierarchical: any;
     validation: any;
+    features?: any;
+    dependencies?: any;
+    adaptiveThresholds?: any;
   } {
     // Calculate averages
     const avgBoost = this.confidenceBoosts.length > 0
@@ -649,7 +756,10 @@ export class Algorithm3Integrator {
       temporal: temporalCoherenceRegularizer.getStats(),
       personalization: personalizedDetector.getStats(),
       hierarchical: hierarchicalDetector.getStats(),
-      validation: conditionalValidator.getStats()
+      validation: conditionalValidator.getStats(),
+      features: categoryFeatureExtractor.getStats(),
+      dependencies: categoryDependencyGraph.getStats(),
+      adaptiveThresholds: this.adaptiveThresholdLearner.getStats()
     };
   }
 
@@ -660,8 +770,10 @@ export class Algorithm3Integrator {
     this.recentDetections.clear();
     this.emittedWarnings.clear();
     temporalCoherenceRegularizer.clearHistory();
+    categoryFeatureExtractor.clear();
+    categoryDependencyGraph.clear();
 
-    logger.info('[Algorithm3Integrator] 🧹 Cleared all state');
+    logger.info('[Algorithm3Integrator] 🧹 Cleared all state (Phases 1-4)');
   }
 
   /**
@@ -669,7 +781,7 @@ export class Algorithm3Integrator {
    */
   dispose(): void {
     this.clear();
-    logger.info('[Algorithm3Integrator] 🛑 Algorithm 3.0 Integration Layer disposed');
+    logger.info('[Algorithm3Integrator] 🛑 Algorithm 3.0 Integration Layer disposed (Phases 1-4)');
   }
 }
 
