@@ -245,9 +245,9 @@
         }
 
         .hero-logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 24px;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 24px;
         }
 
         .hero-logo img {
@@ -255,6 +255,30 @@
             height: 100%;
             object-fit: contain;
             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+        }
+
+        .hero-main-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .title-main {
+            font-size: 4rem;
+            font-weight: 300;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .title-sub {
+            font-size: 2rem;
+            font-weight: 300;
+            opacity: 0.9;
+            letter-spacing: 0.05em;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.12);
         }
 
         .hero-badge {
@@ -1154,6 +1178,14 @@
                 font-size: 2.75rem;
             }
 
+            .title-main {
+                font-size: 2.5rem;
+            }
+
+            .title-sub {
+                font-size: 1.5rem;
+            }
+
             .hero-subtitle {
                 font-size: 1.1rem;
             }
@@ -1187,6 +1219,19 @@
 
             .hero h1 {
                 font-size: 2.25rem;
+            }
+
+            .title-main {
+                font-size: 2rem;
+            }
+
+            .title-sub {
+                font-size: 1.2rem;
+            }
+
+            .hero-logo {
+                width: 100px;
+                height: 100px;
             }
 
             .section {
@@ -1246,12 +1291,15 @@
             <div class="hero-content">
                 <div class="hero-text">
                     <div class="hero-logo">
-                        <img src="images/hero-logo.png" alt="Trigger Warnings - Your Safety Shield">
+                        <img src="landing/images/hero-logo.png" alt="Trigger Warnings Shield Logo" width="120" height="120">
                     </div>
+                    <h1 class="hero-main-title">
+                        <span class="title-main">Trigger Warnings</span>
+                        <span class="title-sub">for Streaming</span>
+                    </h1>
                     <div class="hero-badge" role="status" aria-label="Key features">
                         Real-Time Protection • 100% Private • Free Forever
                     </div>
-                    <h1>Take Control of Your Streaming</h1>
                     <p class="hero-subtitle">
                         Block what you don't want to see. Enjoy what you do. Get 5-10 seconds of advance warning before sensitive content appears. <strong>Your safety. Your choice. Always private, always free.</strong>
                     </p>
@@ -2456,9 +2504,13 @@
                     <a href="/privacy.html">Privacy Policy</a>
                     <a href="/technical">Technical Details</a>
                     <a href="https://github.com/lightmyfireadmin/triggerwarnings">GitHub</a>
+                    <a href="/landing/index-static.html" style="border: 2px solid rgba(255, 255, 255, 0.3); padding: 8px 16px; border-radius: 8px;">📄 HTML-Only Version</a>
                 </div>
                 <div class="footer-text">
-                    <p>© 2024 Trigger Warnings. Free forever. Made with care.</p>
+                    <p>© 2026 Trigger Warnings. Free forever. Made with care.</p>
+                    <p style="font-size: 0.95rem; opacity: 0.8; margin-top: 8px;">
+                        <strong>No one should have to pay to be safe.</strong> This extension is 100% free, forever.
+                    </p>
                 </div>
             </div>
         </div>
