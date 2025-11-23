@@ -15,7 +15,9 @@ self.onmessage = (e) => {
     const { type, payload } = e.data;
     if (type === 'analyze_audio') {
         const p = payload;
-        analyzeAudio(p.frequencyData, p.timestamp, p.sampleRate, p.binCount);
+        // Ensure frequencyData is treated as Uint8Array
+        const frequencyData = new Uint8Array(p.frequencyData);
+        analyzeAudio(frequencyData, p.timestamp, p.sampleRate, p.binCount);
     }
     else if (type === 'reset') {
         resetState();
@@ -54,11 +56,16 @@ function getAverageFrequency(frequencyData, minHz, maxHz, sampleRate, binCount) 
     const nyquist = sampleRate / 2;
     const minBin = Math.floor((minHz / nyquist) * binCount);
     const maxBin = Math.floor((maxHz / nyquist) * binCount);
+    // Bounds check
+    const start = Math.max(0, minBin);
+    const end = Math.min(frequencyData.length - 1, maxBin);
+    if (start > end)
+        return 0;
     let sum = 0;
-    for (let i = minBin; i <= maxBin && i < frequencyData.length; i++) {
+    for (let i = start; i <= end; i++) {
         sum += frequencyData[i];
     }
-    return sum / (maxBin - minBin + 1);
+    return sum / (end - start + 1);
 }
 // --- Detection Logic ---
 function detectScream(timestamp, bands) {
