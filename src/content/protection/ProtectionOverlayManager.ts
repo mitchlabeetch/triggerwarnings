@@ -124,6 +124,7 @@ export class ProtectionOverlayManager {
           protectionType: protection.protectionType,
           categoryName,
           warningDescription,
+          isSafe: false,
         },
       });
 
@@ -152,6 +153,13 @@ export class ProtectionOverlayManager {
   /**
    * Remove protection for a warning
    */
+  markAsSafe(warningId: string): void {
+    const protection = this.activeProtections.get(warningId);
+    if (protection && protection.component) {
+      protection.component.$set({ isSafe: true });
+    }
+  }
+
   removeProtection(warningId: string): void {
     const protection = this.activeProtections.get(warningId);
     if (!protection) {

@@ -46,6 +46,11 @@ export interface IStreamingProvider {
   getInjectionPoint(): HTMLElement | null;
 
   /**
+   * Get the video progress bar element
+   */
+  getProgressBar(): HTMLElement | null;
+
+  /**
    * Register callback for play events
    */
   onPlay(callback: () => void): void;
