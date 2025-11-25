@@ -182,7 +182,7 @@ export class AudioFrequencyAnalyzer {
     this.stats.totalChecks++;
 
     // Get frequency data (FFT output)
-    this.analyser.getByteFrequencyData(this.frequencyData);
+    this.analyser.getByteFrequencyData(this.frequencyData as any);
 
     // Debug Mode: Update Store
     // We do this BEFORE copying/worker dispatch to minimize latency for the UI

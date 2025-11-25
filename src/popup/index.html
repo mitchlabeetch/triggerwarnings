@@ -4,9 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trigger Warnings</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 0; margin: 0; width: 320px; height: 600px; }
+    #app { height: 100%; }
+    #boot-loader { padding: 40px 20px; text-align: center; color: #666; }
+  </style>
+  <script type="module" src="./index.ts"></script>
 </head>
 <body>
-  <div id="app"></div>
-  <script type="module" src="./index.ts"></script>
+  <div id="app">
+    <div id="boot-loader">
+      <h3>Starting...</h3>
+    </div>
+  </div>
 </body>
 </html>

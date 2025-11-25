@@ -123,11 +123,14 @@
 </script>
 
 {#if visible && currentWarning}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div
     class="tw-banner"
     class:tw-banner-active={currentWarning.isActive}
     class:tw-banner-upcoming={!currentWarning.isActive}
     style="{getPositionStyles(position)} opacity: {bannerOpacity}; font-size: {fontSize}px;"
+    on:click|stopPropagation
   >
     <div class="tw-banner-content">
       <!-- Icon -->
@@ -215,8 +218,10 @@
     class="tw-thank-you"
     role="status"
     aria-live="polite"
+    tabindex="0"
     style="{getPositionStyles(position)}"
     on:click={() => showThankYou = false}
+    on:keydown={(e) => e.key === 'Enter' && (showThankYou = false)}
   >
     <div class="tw-thank-you-content">
       {thankYouMessage}
@@ -229,7 +234,7 @@
     position: fixed;
     /* Position is set via inline style from profile settings */
     max-width: 500px;
-    z-index: 999999;
+    z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     animation: tw-slide-in 0.3s ease-out;
     transition: opacity 0.2s ease;
@@ -321,17 +326,6 @@
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
-  }
-
-  .tw-banner-btn-icon {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 6px 10px;
-    font-size: 16px;
-  }
-
-  .tw-banner-btn-icon:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
   }
 
   .tw-banner-btn-secondary {
@@ -447,7 +441,7 @@
     position: fixed;
     /* Position is set via inline style to match banner position */
     max-width: 500px;
-    z-index: 1000000; /* Above banner */
+    z-index: 2147483647; /* Topmost */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     animation: tw-thank-you-slide-in 0.3s ease-out;
     cursor: pointer;

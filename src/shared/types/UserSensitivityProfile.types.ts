@@ -103,6 +103,7 @@ export const DEFAULT_SENSITIVITY_PROFILE: Omit<UserSensitivityProfile, 'userId'>
     'claustrophobia_triggers': 'high',
     'snakes_reptiles': 'high',
     'photosensitivity': 'high',
+    'spiders_snakes': 'high',
 
     // Audio triggers
     'gunshots': 'high',
@@ -142,7 +143,6 @@ export const DEFAULT_SENSITIVITY_PROFILE: Omit<UserSensitivityProfile, 'userId'>
     'pregnancy_childbirth': 'medium',
     'natural_disasters': 'medium',
     'cannibalism': 'high',
-    'photosensitivity': 'high',
     'death_dying': 'high'
   },
 

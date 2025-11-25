@@ -663,7 +663,6 @@
     color: #495057;
   }
 
-  select,
   input,
   textarea {
     padding: 8px 12px;
@@ -674,7 +673,6 @@
     transition: border-color 0.2s;
   }
 
-  select:focus,
   input:focus,
   textarea:focus {
     outline: none;
@@ -702,53 +700,7 @@
     color: #6c757d;
   }
 
-  .form-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    flex: 1;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    background: #f8f9fa;
-    color: #495057;
-    border: 2px solid #dee2e6;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: #e9ecef;
-  }
-
-  .btn-secondary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+  /* Removed unused form-actions and button styles */
 
   .form-note {
     margin: 0;

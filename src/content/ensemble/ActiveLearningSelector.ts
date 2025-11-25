@@ -140,7 +140,7 @@ export class ActiveLearningSelector {
       return {
         candidate,
         score,
-        strategy,
+        strategy: strategy as QuerySelection['strategy'],
         reason,
         priority
       };

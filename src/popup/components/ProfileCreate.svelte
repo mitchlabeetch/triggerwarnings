@@ -64,7 +64,13 @@
 </script>
 
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<div class="profile-create" on:keydown={handleKeydown}>
+<div
+  class="profile-create"
+  on:keydown={handleKeydown}
+  role="dialog"
+  aria-modal="true"
+  aria-label="Create Profile"
+>
   <div class="profile-create-header">
     <h2>Create New Profile</h2>
     <button class="close-btn" on:click={onClose} aria-label="Close">×</button>

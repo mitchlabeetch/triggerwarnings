@@ -322,7 +322,9 @@ export class Algorithm3Integrator {
 
       // Initialize unified contribution pipeline (if Supabase configured)
       // Note: process is available via Vite define/replacement
+      // @ts-ignore
       const supabaseUrl = import.meta.env ? import.meta.env.VITE_SUPABASE_URL : (typeof process !== 'undefined' ? process.env.SUPABASE_URL : '');
+      // @ts-ignore
       const supabaseKey = import.meta.env ? import.meta.env.VITE_SUPABASE_KEY : (typeof process !== 'undefined' ? process.env.SUPABASE_KEY : '');
 
       if (supabaseUrl && supabaseKey) {
@@ -655,7 +657,7 @@ export class Algorithm3Integrator {
     }
 
     // Validation passed - use validated confidence
-    const finalConfidence = validationResult.adjustedConfidence;
+    let finalConfidence = validationResult.adjustedConfidence;
 
     reasoning.push(
       `✅ Validation passed: Level=${validationResult.validationLevel}, ` +
@@ -665,7 +667,7 @@ export class Algorithm3Integrator {
 
     // STEP 5: Apply user personalization (Innovation #30)
     const personalizedResult = personalizedDetector.shouldWarn(
-      detection.category,
+      { ...routedDetection, confidence: finalConfidence },
       // Use a context object instead of just context string if required by updated signature
       undefined // Context is optional
     );
@@ -837,7 +839,7 @@ export class Algorithm3Integrator {
       timestamp: detection.timestamp,
       originalConfidence: detection.confidence,
       originalSource: detection.source,
-      routedPipeline: routed.pipeline,
+      routedPipeline: routed.pipeline || routed.route,
       attentionWeights: {
         visual: attentionWeights.visual,
         audio: attentionWeights.audio,
@@ -907,7 +909,7 @@ export class Algorithm3Integrator {
     detection: LegacyDetection,
     categoryHistory: LegacyDetection[]
   ): MultiModalInput {
-    const input: MultiModalInput = {};
+    const input: MultiModalInput = { timestamp: detection.timestamp };
 
     // Find recent detections from each modality
     const recentVisual = categoryHistory
@@ -1104,16 +1106,8 @@ export class Algorithm3Integrator {
   ): void {
     // Pass string representation of detection to satisfy method signature if needed
     // Assuming updateLearnedWeights might take a serialized detection or the object itself
-    // Based on previous errors, it seemed to expect string? Or maybe the error was reverse.
-    // Error was: Argument of type 'string' is not assignable to parameter of type 'Detection'.
-    // Wait, let's look at the error again: "Argument of type 'string' is not assignable to parameter of type 'Detection'."
-    // This implies `detection` is being passed as string but function expects Detection object.
-    // Here `detection` IS a Detection object.
-    // The error was on line 645 in previous log.
-    // Wait, previous error: src/content/integration/Algorithm3Integrator.ts(645,7): error TS2345: Argument of type 'string' is not assignable to parameter of type 'Detection'.
-    // This probably refers to a call somewhere.
-
-    modalityAttentionMechanism.updateLearnedWeights(category, detection, outcome);
+    
+    modalityAttentionMechanism.updateLearnedWeights(category as any, detection as any, outcome);
 
     logger.info(
       `[Algorithm3Integrator] 📚 Updated learned weights for ${category} | ` +
@@ -1474,7 +1468,7 @@ export class Algorithm3Integrator {
     smartCache.clear();
     parallelEngine.clear();
     contentFingerprintCache.clear();
-    getProgressiveLearning()?.clear();
+    (getProgressiveLearning() as any)?.clear();
     getUnifiedPipeline()?.clear();
     // getCrossDeviceSync()?.clear(); // Method might not exist
     crossModalAttention.clear();

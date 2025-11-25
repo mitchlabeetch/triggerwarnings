@@ -7,6 +7,7 @@
   export let buttonOpacity: number = 0.45;
   export let appearingMode: 'always' | 'hover' = 'always';
   export let fadeOutDelay: number = 3000;
+  export let onQuickAdd: () => void = () => {}; // Default no-op
 
   // Initialize as visible so we can see it immediately upon injection
   let isVisible = true;
@@ -75,16 +76,21 @@
 </script>
 
 {#if isVisible}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div
     class="tw-indicator-root"
     transition:fade={{ duration: 200 }}
     on:mouseenter={handleMouseEnter}
     on:mouseleave={handleMouseLeave}
+    on:click|stopPropagation={onQuickAdd}
+    on:keydown={(e) => e.key === 'Enter' && onQuickAdd()}
     style="--tw-indicator-opacity: {isHovered
       ? 1
       : buttonOpacity}; --tw-indicator-color: {buttonColor};"
-    role="status"
-    aria-label="Trigger Warnings Active"
+    role="button"
+    tabindex="0"
+    aria-label="Trigger Warnings Active - Click to Report"
   >
     <div class="indicator-dot"></div>
     <span class="indicator-text">TW Active</span>
@@ -94,8 +100,9 @@
 <style>
   .tw-indicator-root {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 8px;

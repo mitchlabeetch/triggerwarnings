@@ -301,7 +301,7 @@ export class ExplainabilityEngine {
 
     // Phase 4: Dependency Graph
     if (data.dependencyBoost && data.dependencyBoost.totalBoost > 0) {
-      const relatedCategories = data.dependencyBoost.boosts.map(b => b.fromCategory).join(', ');
+      const relatedCategories = data.dependencyBoost.boosts.map((b: any) => b.fromCategory).join(', ');
       contributions.push({
         phase: 4,
         innovation: 'Dependency Graph',

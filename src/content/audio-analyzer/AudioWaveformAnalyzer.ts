@@ -145,7 +145,7 @@ export class AudioWaveformAnalyzer {
     this.stats.totalChecks++;
 
     // Get time domain data (waveform)
-    this.analyser.getByteTimeDomainData(this.dataArray);
+    this.analyser.getByteTimeDomainData(this.dataArray as any);
 
     // Update debug store with waveform
     // We update this via AudioFrequencyAnalyzer for Frequency, but here we could also update

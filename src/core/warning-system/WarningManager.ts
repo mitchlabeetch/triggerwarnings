@@ -67,55 +67,69 @@ export class WarningManager {
   async initialize(): Promise<void> {
     console.log('[TW WarningManager] 🚀 Initializing warning manager...');
 
-    // Load active profile
-    this.profile = await ProfileManager.getActive();
-    console.log(`[TW WarningManager] ✅ Profile loaded: "${this.profile.name}" with ${this.profile.enabledCategories.length} enabled categories`);
-    console.log('[TW WarningManager] 📋 Enabled categories:', this.profile.enabledCategories);
-
-    if (this.profile.enabledCategories.length === 0) {
-      console.warn('[TW WarningManager] ⚠️ WARNING: No categories enabled in profile! All warnings will be filtered out.');
-      console.warn('[TW WarningManager] Please enable trigger categories in settings to see warnings.');
-    }
-
-    // Get current media
-    const media = await this.provider.getCurrentMedia();
-    if (!media) {
-      console.warn('[TW WarningManager] ❌ No media detected');
-      return;
-    }
-
-    console.log(`[TW WarningManager] 🎬 Media detected: ${media.id} - "${media.title || 'Unknown'}"`);
-    console.log(`[TW WarningManager] Platform: ${this.provider.name}`);
-
-    // Fetch warnings for this media
-    await this.fetchWarnings(media.id);
-
-    // Initialize real-time detection systems
-    this.initializeDetectors();
-
-    // Start monitoring
-    this.startMonitoring();
-    console.log('[TW WarningManager] ✅ Monitoring started');
-
-    // Listen for media changes
-    this.provider.onMediaChange(async (newMedia) => {
-      await this.handleMediaChange(newMedia);
-    });
-
-    // Listen for profile changes
-    StorageAdapter.onChange('activeProfileId', async () => {
+    try {
+      // Load active profile
       this.profile = await ProfileManager.getActive();
-      console.log('[TW WarningManager] 🔄 Profile changed, refilteting warnings...');
-      this.refilterWarnings();
-    });
+      console.log(`[TW WarningManager] ✅ Profile loaded: "${this.profile.name}" with ${this.profile.enabledCategories.length} enabled categories`);
+      console.log('[TW WarningManager] 📋 Enabled categories:', this.profile.enabledCategories);
 
-    console.log('[TW WarningManager] ✅ Initialization complete');
+      if (this.profile.enabledCategories.length === 0) {
+        console.warn('[TW WarningManager] ⚠️ WARNING: No categories enabled in profile! All warnings will be filtered out.');
+        console.warn('[TW WarningManager] Please enable trigger categories in settings to see warnings.');
+      }
+
+      // Get current media
+      const media = await this.provider.getCurrentMedia();
+      if (!media) {
+        console.warn('[TW WarningManager] ❌ No media detected');
+        return;
+      }
+
+      console.log(`[TW WarningManager] 🎬 Media detected: ${media.id} - "${media.title || 'Unknown'}"`);
+      console.log(`[TW WarningManager] Platform: ${this.provider.name}`);
+
+      // Fetch warnings for this media
+      await this.fetchWarnings(media.id);
+
+      // Initialize real-time detection systems
+      this.initializeDetectors();
+
+      // Start monitoring
+      this.startMonitoring();
+      console.log('[TW WarningManager] ✅ Monitoring started');
+
+      // Listen for media changes
+      this.provider.onMediaChange(async (newMedia) => {
+        await this.handleMediaChange(newMedia);
+      });
+
+      // Listen for profile changes
+      StorageAdapter.onChange('activeProfileId', async () => {
+        try {
+          this.profile = await ProfileManager.getActive();
+          console.log('[TW WarningManager] 🔄 Profile changed, refilteting warnings...');
+          this.refilterWarnings();
+        } catch (e) {
+          console.error('[TW WarningManager] Error handling profile change:', e);
+        }
+      });
+
+      console.log('[TW WarningManager] ✅ Initialization complete');
+    } catch (error) {
+      console.error('[TW WarningManager] 💥 CRITICAL ERROR during initialization:', error);
+      // Don't re-throw, just log. This prevents the whole content script from dying if one part fails.
+    }
   }
 
   /**
    * Initialize real-time detection systems
    */
   private initializeDetectors(): void {
+    if (!this.profile) {
+      console.warn('[TW WarningManager] Cannot initialize detectors: Profile not loaded');
+      return;
+    }
+
     console.log('[TW WarningManager] 🔍 Initializing real-time detection systems...');
     const video = this.provider.getVideoElement();
     if (!video) {

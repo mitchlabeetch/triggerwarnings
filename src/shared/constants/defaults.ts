@@ -26,7 +26,14 @@ export const DEFAULT_DISPLAY_SETTINGS = {
 export const DEFAULT_PROFILE: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'> = {
   name: 'Default Profile',
   isDefault: true,
-  enabledCategories: [],
+  enabledCategories: [
+    'flashing_lights',
+    'gunshots',
+    'screams',
+    'blood',
+    'violence',
+    'jumpscares'
+  ],
   categoryActions: Object.fromEntries(
     CATEGORY_KEYS.map((key) => [key, DEFAULT_WARNING_ACTION])
   ) as Record<string, WarningAction>,

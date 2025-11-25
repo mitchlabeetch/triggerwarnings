@@ -47,7 +47,13 @@
 </script>
 
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<div class="profile-delete" on:keydown={handleKeydown}>
+<div
+  class="profile-delete"
+  on:keydown={handleKeydown}
+  role="dialog"
+  aria-modal="true"
+  aria-label="Delete Profile"
+>
   <div class="profile-delete-header">
     <h2>Delete Profile</h2>
     <button class="close-btn" on:click={onClose} aria-label="Close">×</button>

@@ -69,7 +69,13 @@
 </script>
 
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<div class="profile-rename" on:keydown={handleKeydown}>
+<div
+  class="profile-rename"
+  on:keydown={handleKeydown}
+  role="dialog"
+  aria-modal="true"
+  aria-label="Rename Profile"
+>
   <div class="profile-rename-header">
     <h2>Rename Profile</h2>
     <button class="close-btn" on:click={onClose} aria-label="Close">×</button>

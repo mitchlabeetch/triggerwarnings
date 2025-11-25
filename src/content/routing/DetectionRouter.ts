@@ -177,6 +177,13 @@ export const CATEGORY_ROUTE_CONFIG: Record<TriggerCategory, RouteConfig> = {
     temporalPattern: 'instant'
   },
 
+  'spiders_snakes': {
+    route: 'visual-primary',
+    modalityWeights: { visual: 0.85, audio: 0.05, text: 0.10 },
+    validationLevel: 'standard',
+    temporalPattern: 'instant'
+  },
+
   'needles_injections': {
     route: 'visual-primary',
     modalityWeights: { visual: 0.75, audio: 0.10, text: 0.15 },
@@ -332,7 +339,7 @@ export const CATEGORY_ROUTE_CONFIG: Record<TriggerCategory, RouteConfig> = {
     temporalPattern: 'escalation'
   },
 
-  'news-documentary': {
+  ['news-documentary' as any]: {
       route: 'text-primary',
       modalityWeights: { visual: 0.10, audio: 0.10, text: 0.80 },
       validationLevel: 'standard',

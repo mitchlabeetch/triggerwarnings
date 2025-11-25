@@ -50,7 +50,9 @@
   class:visible
   role="status"
   aria-live="polite"
+  tabindex="0"
   on:click={closeToast}
+  on:keydown={(e) => e.key === 'Enter' && closeToast()}
 >
   <div class="toast-icon">{getIcon()}</div>
   <div class="toast-message">{message}</div>
