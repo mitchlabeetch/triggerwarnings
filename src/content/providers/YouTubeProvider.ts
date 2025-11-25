@@ -54,6 +54,10 @@ export class YouTubeProvider extends BaseProvider {
     );
   }
 
+  public getProgressBar(): HTMLElement | null {
+    return document.querySelector('.ytp-progress-bar-container');
+  }
+
   protected setupVideoListeners(): void {
     if (!this.videoElement) return;
 

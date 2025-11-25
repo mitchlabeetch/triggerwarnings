@@ -14,6 +14,10 @@ import { WarningManager } from '@core/warning-system/WarningManager';
 import { BannerManager } from './banner/BannerManager';
 import { ActiveIndicatorManager } from './indicator/ActiveIndicatorManager';
 import AnalysisOverlay from './overlay/AnalysisOverlay.svelte';
+import UnifiedControlCenter from './overlay/UnifiedControlCenter.svelte';
+import { LayoutEngine } from './ui/LayoutEngine';
+import { ThemeExtractor } from './ui/ThemeExtractor';
+import { TriggerTimelineManager } from './timeline/TriggerTimelineManager';
 import type { IStreamingProvider } from '@shared/types/Provider.types';
 import type { ActiveWarning } from '@shared/types/Warning.types';
 import { createLogger } from '@shared/utils/logger';
@@ -25,6 +29,9 @@ class TriggerWarningsContent {
   private warningManager: WarningManager | null = null;
   private bannerManager: BannerManager | null = null;
   private indicatorManager: ActiveIndicatorManager | null = null;
+  private layoutEngine: LayoutEngine | null = null;
+  private themeExtractor: ThemeExtractor | null = null;
+  private timelineManager: TriggerTimelineManager | null = null;
   private initialized = false;
   private activeWarningsMap: Map<string, ActiveWarning> = new Map();
 
@@ -71,12 +78,30 @@ class TriggerWarningsContent {
       this.indicatorManager = new ActiveIndicatorManager(this.provider);
       await this.indicatorManager.initialize();
 
+      // Initialize Layout Engine
+      this.layoutEngine = new LayoutEngine(this.provider);
+      this.layoutEngine.initialize();
+
+      // Initialize Theme Extractor
+      this.themeExtractor = new ThemeExtractor(this.provider);
+      this.themeExtractor.initialize();
+
+      // Initialize Timeline Manager
+      this.timelineManager = new TriggerTimelineManager(this.provider);
+      this.timelineManager.initialize();
+
       // Initialize Analysis Overlay (Debug)
       // TODO: Fix Svelte 5 compatibility issue with AnalysisOverlay
       // const overlayDiv = document.createElement('div');
       // overlayDiv.id = 'tw-analysis-overlay-root';
       // document.body.appendChild(overlayDiv);
       // new AnalysisOverlay({ target: overlayDiv });
+
+      // Initialize Unified Control Center
+      const controlCenterDiv = document.createElement('div');
+      controlCenterDiv.id = 'tw-control-center-root';
+      document.body.appendChild(controlCenterDiv);
+      new UnifiedControlCenter({ target: controlCenterDiv });
 
       // Connect warning manager to banner manager and indicator
       this.warningManager.onWarning((warning: ActiveWarning) => {
@@ -165,6 +190,7 @@ class TriggerWarningsContent {
   private updateIndicatorWarnings(): void {
     const warnings = Array.from(this.activeWarningsMap.values());
     this.indicatorManager?.updateActiveWarnings(warnings);
+    this.timelineManager?.updateWarnings(warnings);
   }
 
   /**
@@ -260,6 +286,21 @@ class TriggerWarningsContent {
     if (this.indicatorManager) {
       this.indicatorManager.dispose();
       this.indicatorManager = null;
+    }
+
+    if (this.layoutEngine) {
+      this.layoutEngine.dispose();
+      this.layoutEngine = null;
+    }
+
+    if (this.themeExtractor) {
+      this.themeExtractor.dispose();
+      this.themeExtractor = null;
+    }
+
+    if (this.timelineManager) {
+      this.timelineManager.dispose();
+      this.timelineManager = null;
     }
 
     if (this.provider) {

@@ -350,6 +350,7 @@ export class WarningManager {
         // Warning ended
         console.log(`[TW WarningManager] ✅ WARNING ENDED: ${warning.categoryKey}`);
         this.activeWarnings.delete(warning.id);
+        this.protectionManager.markAsSafe(warning.id);
         this.triggerWarningEnd(warning.id);
         this.applyWarningAction(warning, false);
       }

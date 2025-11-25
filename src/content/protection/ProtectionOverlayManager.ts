@@ -124,6 +124,7 @@ export class ProtectionOverlayManager {
           protectionType: protection.protectionType,
           categoryName,
           warningDescription,
+          isSafe: false,
         },
       });
 
@@ -152,6 +153,13 @@ export class ProtectionOverlayManager {
   /**
    * Remove protection for a warning
    */
+  markAsSafe(warningId: string): void {
+    const protection = this.activeProtections.get(warningId);
+    if (protection && protection.component) {
+      protection.component.$set({ isSafe: true });
+    }
+  }
+
   removeProtection(warningId: string): void {
     const protection = this.activeProtections.get(warningId);
     if (!protection) {
@@ -160,16 +168,22 @@ export class ProtectionOverlayManager {
 
     logger.info(`Removing protection for warning ${warningId}`);
 
-    // Remove blackout overlay
-    if (protection.component) {
-      protection.component.$destroy();
-      protection.component = null;
+    const container = protection.container;
+    if (container) {
+      container.addEventListener('animationend', () => {
+        if (protection.component) {
+          protection.component.$destroy();
+          protection.component = null;
+        }
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+        this.activeProtections.delete(warningId);
+      }, { once: true });
+    } else {
+        this.activeProtections.delete(warningId);
     }
 
-    if (protection.container && protection.container.parentNode) {
-      protection.container.parentNode.removeChild(protection.container);
-      protection.container = null;
-    }
 
     // Restore audio state
     if (protection.videoElement) {
@@ -180,8 +194,6 @@ export class ProtectionOverlayManager {
         logger.info('Audio state restored');
       }
     }
-
-    this.activeProtections.delete(warningId);
   }
 
   /**
