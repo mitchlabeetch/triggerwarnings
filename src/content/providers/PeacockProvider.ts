@@ -55,20 +55,22 @@ export class PeacockProvider extends BaseProvider {
       this.triggerPlayCallbacks();
     });
 
-    this.addEventListener(video, 'pause', () => {
+    this.addEventListener(this.videoElement, 'pause', () => {
       this.triggerPauseCallbacks();
     });
 
-    this.addEventListener(video, 'seeked', () => {
-      const currentTime = video.currentTime;
+    this.addEventListener(this.videoElement, 'seeked', () => {
+      if (!this.videoElement) return;
+      const currentTime = this.videoElement.currentTime;
       if (Math.abs(currentTime - this.lastSeekTime) > 1) {
         this.triggerSeekCallbacks(currentTime);
       }
       this.lastSeekTime = currentTime;
     });
 
-    this.addEventListener(video, 'timeupdate', () => {
-      this.lastSeekTime = video.currentTime;
+    this.addEventListener(this.videoElement, 'timeupdate', () => {
+      if (!this.videoElement) return;
+      this.lastSeekTime = this.videoElement.currentTime;
     });
   }
 
