@@ -58,6 +58,10 @@ export class NetflixProvider extends BaseProvider {
     );
   }
 
+  public getProgressBar(): HTMLElement | null {
+    return document.querySelector('.scrubber-container');
+  }
+
   protected setupVideoListeners(): void {
     if (!this.videoElement) return;
 
