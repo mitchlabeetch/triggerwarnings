@@ -1,203 +1,243 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { StorageAdapter } from '../../core/storage/StorageAdapter';
+  import { onMount } from 'svelte';
+  import browser from 'webextension-polyfill';
+  import type { ActiveWarning } from '@shared/types/Warning.types';
+  import type { IStreamingProvider } from '@shared/types/Provider.types';
+
+  export let warnings: ActiveWarning[] = [];
+  export let provider: IStreamingProvider;
 
   let isHovered = false;
   let isExpanded = false;
   let isDragging = false;
+  let activeTab = 'Upcoming';
+  let nextTriggerText = '';
+  let currentTime = 0;
   let isVertical = false;
-  let top = 20; // position in pixels
-  let left = 0; // position in pixels, initialized on mount
-  let xOffset = 0;
-  let yOffset = 0;
+
+  let expansionDirection: 'left' | 'right' | 'center' = 'center';
+
+  const width = tweened(60, { duration: 300, easing: cubicOut });
+  const height = tweened(60, { duration: 300, easing: cubicOut });
+
+  let position = { x: window.innerWidth / 2 - 30, y: 50 };
+  let offset = { x: 0, y: 0 };
 
   onMount(async () => {
-    const savedPosition = await StorageAdapter.get('unifiedControlCenterPosition');
-    if (savedPosition) {
-      top = savedPosition.top;
-      left = savedPosition.left;
-    } else {
-      // Default to top-center if no position is saved
-      left = window.innerWidth / 2;
+    const data = await browser.storage.local.get('controlCenterPosition');
+    if (data.controlCenterPosition) {
+      position = data.controlCenterPosition;
     }
-    checkPosition();
+    const videoElement = provider.getVideoElement();
+    if (videoElement) {
+        videoElement.addEventListener('timeupdate', () => {
+            currentTime = videoElement.currentTime;
+        });
+    }
   });
 
-  function onMouseEnter() {
-    isHovered = true;
+  $: {
+    const upcomingWarnings = warnings.filter(w => w.startTime > currentTime);
+    if (upcomingWarnings.length > 0) {
+      const nextWarning = upcomingWarnings.sort((a, b) => a.startTime - b.startTime)[0];
+      const timeToWarning = nextWarning.startTime - currentTime;
+      const minutes = Math.floor(timeToWarning / 60);
+      const seconds = Math.floor(timeToWarning % 60).toString().padStart(2, '0');
+      nextTriggerText = `Next: ${nextWarning.categoryName} in ${minutes}:${seconds}`;
+    } else {
+      nextTriggerText = 'No upcoming triggers';
+    }
   }
 
-  function onMouseLeave() {
+  $: {
+    isVertical = position.x < 100 || position.x > window.innerWidth - 100;
+    if (position.x < window.innerWidth / 3) expansionDirection = 'right';
+    else if (position.x > (window.innerWidth / 3) * 2) expansionDirection = 'left';
+    else expansionDirection = 'center';
+  }
+
+  function handleMouseEnter() {
+    if (!isExpanded) {
+      isHovered = true;
+      if (!isVertical) width.set(300);
+    }
+  }
+
+  function handleMouseLeave() {
+    if (!isExpanded) {
+      isHovered = false;
+      if (!isVertical) width.set(60);
+    }
+  }
+
+  function toggleExpand() {
+    if (isDragging) return;
+    isExpanded = !isExpanded;
+    if (isExpanded) {
+      if (isVertical) {
+        height.set(400);
+        width.set(80);
+      } else {
+        width.set(500);
+        height.set(300);
+      }
+    } else {
+      width.set(60);
+      height.set(60);
+      handleMouseLeave();
+    }
     isHovered = false;
   }
 
-  function onClick() {
-    isExpanded = !isExpanded;
+  function handleMouseDown(event: MouseEvent) {
+    if (event.target instanceof HTMLElement && event.target.closest('.drag-handle')) {
+      isDragging = true;
+      offset.x = event.clientX - position.x;
+      offset.y = event.clientY - position.y;
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
   }
 
-  function onDragStart(event: MouseEvent) {
-    isDragging = true;
-    xOffset = event.clientX - left;
-    yOffset = event.clientY - top;
-    window.addEventListener('mousemove', onDrag);
-    window.addEventListener('mouseup', onDragEnd);
+  function handleMouseMove(event: MouseEvent) {
+    if (isDragging) {
+      position.x = event.clientX - offset.x;
+      position.y = event.clientY - offset.y;
+    }
   }
 
-  function onDrag(event: MouseEvent) {
-    if (!isDragging) return;
-    left = event.clientX - xOffset;
-    top = event.clientY - yOffset;
+  function handleMouseUp() {
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+    browser.storage.local.set({ controlCenterPosition: position });
+    setTimeout(() => { isDragging = false; }, 10);
   }
-
-  function onDragEnd() {
-    isDragging = false;
-    window.removeEventListener('mousemove', onDrag);
-    window.removeaddEventListener('mouseup', onDragEnd);
-    StorageAdapter.set('unifiedControlCenterPosition', { top, left });
-    checkPosition();
-  }
-
-  function checkPosition() {
-    const screenWidth = window.innerWidth;
-    isVertical = left < screenWidth * 0.25 || left > screenWidth * 0.75;
-  }
-
 </script>
 
 <div
-  class="unified-control-center"
-  class:hover={isHovered}
+  class="glass-pill-container"
+  style="--pill-width: {$width}px; --pill-height: {$height}px; left: {position.x}px; bottom: var(--tw-dock-bottom-offset, 20px);"
   class:expanded={isExpanded}
   class:vertical={isVertical}
-  style="top: {top}px; left: {left}px; transform: translateX(-50%);"
-  on:mouseenter={onMouseEnter}
-  on:mouseleave={onMouseLeave}
-  on:click={onClick}
+  class:expand-left={expansionDirection === 'left'}
+  class:expand-right={expansionDirection === 'right'}
+  on:mouseenter={handleMouseEnter}
+  on:mouseleave={handleMouseLeave}
 >
-  <div class="drag-handle" on:mousedown={onDragStart}>
-    <!-- You can put a drag icon here -->
-  </div>
-
-  <div class="pill-content">
+  <div class="drag-handle-area" on:mousedown={handleMouseDown}>
     {#if isHovered && !isExpanded}
-      <!-- TODO: Replace with dynamic data from a store -->
-      <span>Next Trigger: Violence in 1:24</span>
-    {:else if !isExpanded}
-      <div class="pill-icon"></div>
+      <div class="drag-handle">
+        <span /><span /><span />
+      </div>
     {/if}
   </div>
 
-  {#if isExpanded}
-    <div class="dashboard">
-      <div class="tabs">
-        <button class="tab-button active">Upcoming</button>
-        <button class="tab-button">Report</button>
-        <button class="tab-button">Settings</button>
+  <div class="glass-pill" on:click={toggleExpand}>
+    {#if !isExpanded}
+      <span class="default-text">
+        {#if isHovered && !isVertical}
+          {nextTriggerText}
+        {:else}
+          TW
+        {/if}
+      </span>
+    {:else}
+      <div class="dashboard">
+        <div class="tabs">
+          <button on:click|stopPropagation={() => activeTab = 'Upcoming'} class:active={activeTab === 'Upcoming'}>Upcoming</button>
+          <button on:click|stopPropagation={() => activeTab = 'Report'} class:active={activeTab === 'Report'}>Report</button>
+          <button on:click|stopPropagation={() => activeTab = 'Settings'} class:active={activeTab === 'Settings'}>Settings</button>
+        </div>
+        <div class="tab-content">
+          {#if activeTab === 'Upcoming'}
+            <div>Upcoming Triggers Content</div>
+          {:else if activeTab === 'Report'}
+            <div>Report a Trigger Content</div>
+          {:else if activeTab === 'Settings'}
+            <div>Settings Content</div>
+          {/if}
+        </div>
       </div>
-      <div class="tab-content">
-        <!-- Content for Upcoming -->
-      </div>
-    </div>
-  {/if}
+    {/if}
+  </div>
 </div>
 
 <style>
-  .unified-control-center {
+  /* Base styles */
+  .glass-pill-container {
     position: fixed;
-    z-index: 99999999;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border: 1px solid var(--tw-accent-color, rgba(255, 255, 255, 0.2));
-    border-radius: 999px;
-    color: white;
-    box-shadow: 0 0 10px 0 var(--tw-accent-color, transparent);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-    width: 60px;
-    height: 60px;
+    left: 0;
+    width: var(--pill-width);
+    height: var(--pill-height);
+    z-index: 2147483647 !important;
     display: flex;
-    align-items: center;
     justify-content: center;
   }
 
-  .unified-control-center.hover:not(.expanded) {
-    width: 300px;
-  }
-
-  .unified-control-center.expanded {
-    width: 500px;
-    height: 300px;
-    border-radius: 20px;
-    flex-direction: column;
-    align-items: stretch;
-    padding: 10px;
-  }
-
-  .unified-control-center.expanded.vertical {
-    width: 300px;
-    height: 500px;
-  }
-
-  .drag-handle {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 10px;
-    cursor: grab;
-    border-top: 2px dotted rgba(255, 255, 255, 0.5);
-  }
-
-  .drag-handle:active {
-    cursor: grabbing;
-  }
-
-  .pill-content {
+  .glass-pill {
+    width: 100%;
+    height: 100%;
+    border-radius: 50px;
+    background: rgba(10, 10, 20, 0.7);
+    backdrop-filter: blur(12px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: sans-serif;
+    font-size: 1.1rem;
     overflow: hidden;
-    white-space: nowrap;
-    text-align: center;
+    transition: all 0.3s cubic-out;
+    cursor: pointer;
   }
 
-  .pill-icon {
-    width: 24px;
-    height: 24px;
-    background: white;
-    border-radius: 50%;
+  /* Drag handle */
+  .drag-handle-area {
+    position: absolute;
+    top: -15px;
+    height: 20px;
+    width: 100%;
+    cursor: move;
+    display: flex;
+    justify-content: center;
   }
+  .drag-handle { display: flex; gap: 3px; padding: 4px; background: rgba(0,0,0,0.4); border-radius: 5px; }
+  .drag-handle span { width: 4px; height: 4px; background-color: rgba(255,255,255,0.6); border-radius: 50%; }
 
+  .default-text { white-space: nowrap; padding: 0 20px; }
+
+  /* Expansion direction */
+  .expanded.expand-left .glass-pill { transform-origin: right; }
+  .expanded.expand-right .glass-pill { transform-origin: left; }
+
+  /* Dashboard base */
   .dashboard {
     width: 100%;
     height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
     display: flex;
-    flex-direction: column;
+    opacity: 0;
+    animation: fadeIn 0.2s 0.2s forwards;
   }
+  @keyframes fadeIn { to { opacity: 1; } }
 
-  .tabs {
-    display: flex;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  }
+  /* Horizontal Layout */
+  .dashboard { flex-direction: column; }
+  .tabs { display: flex; justify-content: space-around; border-bottom: 1px solid rgba(255,255,255,0.3); margin-bottom: 15px; }
 
-  .tab-button {
-    background: none;
-    border: none;
-    color: white;
-    padding: 10px 15px;
-    cursor: pointer;
-    opacity: 0.7;
-  }
+  /* Vertical Layout */
+  .vertical .dashboard { flex-direction: row; }
+  .vertical .tabs { flex-direction: column; justify-content: flex-start; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.3); margin-bottom: 0; margin-right: 15px; }
+  .vertical .tabs button { text-align: left; }
 
-  .tab-button.active, .tab-button:hover {
-    opacity: 1;
-    border-bottom: 2px solid white;
-  }
+  .tabs button { background: none; border: none; color: white; padding: 10px 15px; cursor: pointer; font-size: 1rem; opacity: 0.7; transition: opacity 0.2s; }
+  .tabs button:hover { opacity: 1; }
+  .tabs button.active { opacity: 1; border-bottom: 2px solid var(--tw-accent-color, white); }
+  .vertical .tabs button.active { border-bottom: none; border-right: 2px solid var(--tw-accent-color, white); }
 
-  .tab-content {
-    padding: 15px;
-    flex-grow: 1;
-  }
+  .tab-content { flex-grow: 1; text-align: center; }
 </style>

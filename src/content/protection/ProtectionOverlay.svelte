@@ -5,18 +5,11 @@
   export let protectionType: ProtectionType = 'none';
   export let categoryName: string = '';
   export let warningDescription: string = '';
+  export let isSafe: boolean = false; // New prop to control the curtain transition
 
-  let visible = false;
   let isPeeking = false;
 
   $: showBlackout = protectionType === 'blackout' || protectionType === 'both';
-
-  onMount(() => {
-    // Slight delay for smooth transition
-    setTimeout(() => {
-      visible = true;
-    }, 100);
-  });
 
   function handlePeekStart() {
     isPeeking = true;
@@ -35,19 +28,19 @@
 {#if showBlackout}
   <div
     class="tw-protection-overlay"
-    class:visible={visible}
     class:peeking={isPeeking}
+    class:safe={isSafe}
     on:click={handleClick}
     role="presentation"
   >
     <div class="tw-protection-content">
+      <!-- Content remains the same -->
       <div class="tw-protection-icon">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           <circle cx="12" cy="12" r="1" fill="currentColor"/>
         </svg>
       </div>
-
       <div class="tw-protection-message">
         <h3>Protected Content</h3>
         {#if categoryName}
@@ -57,17 +50,18 @@
           <p class="tw-protection-description">{warningDescription}</p>
         {/if}
       </div>
-
-      <button
-        class="tw-peek-button"
-        on:mousedown={handlePeekStart}
-        on:mouseup={handlePeekEnd}
-        on:touchstart={handlePeekStart}
-        on:touchend={handlePeekEnd}
-      >
-        Hold to Peek
-      </button>
     </div>
+
+    <button
+      class="tw-peek-button"
+      on:mousedown={handlePeekStart}
+      on:mouseup={handlePeekEnd}
+      on:mouseleave={handlePeekEnd}
+      on:touchstart={handlePeekStart}
+      on:touchend={handlePeekEnd}
+    >
+      Hold to Peek
+    </button>
   </div>
 {/if}
 
@@ -82,27 +76,49 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999999;
+    z-index: 2147483646; /* High z-index */
     pointer-events: all;
 
     /* Curtain Effect */
-    --mask-size: 0%;
-    mask-image: radial-gradient(circle at center, black var(--mask-size), transparent var(--mask-size));
-    mask-size: 100% 100%;
+    mask-image: radial-gradient(circle, black 0%, black 100%);
+    mask-size: 1% 1%; /* Start small and transparent */
     mask-repeat: no-repeat;
     mask-position: center;
-    transition: --mask-size 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: mask-size 0.8s cubic-bezier(0.7, 0, 0.3, 1), opacity 0.4s ease-in-out;
+    opacity: 1;
   }
 
-  .tw-protection-overlay.visible {
-    --mask-size: 200%; /* Large enough to cover the screen */
+  .tw-protection-overlay.safe {
+    mask-size: 300% 300%; /* Grow to reveal content */
+    opacity: 0;
+    pointer-events: none; /* Allow interaction when safe */
   }
 
   .tw-protection-overlay.peeking {
-    opacity: 0.1;
+    opacity: 0.1 !important; /* Force opacity for peeking */
     transition: opacity 0.2s ease-in-out;
   }
 
+  .tw-peek-button {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: background-color 0.2s;
+  }
+
+  .tw-peek-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  /* Keep existing styles for content */
   .tw-protection-content {
     display: flex;
     flex-direction: column;
@@ -152,45 +168,5 @@
     line-height: 1.6;
     color: rgba(255, 255, 255, 0.7);
     max-width: 400px;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .tw-protection-content {
-      padding: 24px;
-      gap: 16px;
-    }
-
-    .tw-protection-icon svg {
-      width: 40px;
-      height: 40px;
-    }
-
-    .tw-protection-message h3 {
-      font-size: 20px;
-    }
-
-    .tw-protection-category {
-      font-size: 14px;
-    }
-
-    .tw-protection-description {
-      font-size: 13px;
-    }
-  }
-
-  .tw-peek-button {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    margin-top: 20px;
-  }
-
-  .tw-peek-button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
   }
 </style>
