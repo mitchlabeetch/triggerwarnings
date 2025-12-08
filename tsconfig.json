@@ -28,18 +28,11 @@
       "@content/*": ["src/content/*"],
       "@background/*": ["src/background/*"],
       "@popup/*": ["src/popup/*"],
-      "@options/*": ["src/options/*"]
+      "@options/*": ["src/options/*"],
+      "@database/*": ["src/database/*"]
     },
     "types": ["chrome", "webextension-polyfill", "vite/client", "vitest/globals"]
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build",
-    "BACKUP1",
-    "TRIGGER BACKEND"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "build", "BACKUP1", "TRIGGER BACKEND"]
 }

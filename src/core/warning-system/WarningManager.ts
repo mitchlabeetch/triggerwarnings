@@ -9,9 +9,14 @@ import { SupabaseClient } from '../api/SupabaseClient';
 import { StorageAdapter } from '../storage/StorageAdapter';
 import { ProfileManager } from '../profiles/ProfileManager';
 import { CACHE_EXPIRATION_MS, VIDEO_CHECK_INTERVAL_MS } from '@shared/constants/defaults';
-import { SubtitleAnalyzer } from '../../content/subtitle-analyzer/SubtitleAnalyzer';
-import { PhotosensitivityDetector } from '../../content/photosensitivity-detector/PhotosensitivityDetector';
 import { ProtectionOverlayManager } from '../../content/protection/ProtectionOverlayManager';
+import { createLogger } from '@shared/utils/logger';
+
+const logger = createLogger('WarningManager');
+
+// NOTE: Real-time detection systems are temporarily disabled.
+// They have been archived to src/_Detection_System/ for future use.
+// Current system relies on database-driven timestamps.
 
 interface CacheEntry {
   warnings: Warning[];
@@ -20,7 +25,7 @@ interface CacheEntry {
 
 export class WarningManager {
   private provider: IStreamingProvider;
-  private profile: Profile;
+  private profile!: Profile; // Initialized in initialize() before any use
   private warnings: Warning[] = [];
   private activeWarnings: Set<string> = new Set();
   private ignoredTriggersThisSession: Set<string> = new Set();
@@ -32,11 +37,11 @@ export class WarningManager {
   // In-memory cache for faster access
   private static warningCache: Map<string, CacheEntry> = new Map();
 
-  // Real-time detection systems
-  private subtitleAnalyzer: SubtitleAnalyzer | null = null;
-  private photosensitivityDetector: PhotosensitivityDetector | null = null;
-  private enableSubtitleAnalysis: boolean = true; // Can be made configurable
-  private enablePhotosensitivityDetection: boolean = true;
+  // NOTE: Real-time detection systems disabled - see src/_Detection_System/
+  // private subtitleAnalyzer: SubtitleAnalyzer | null = null;
+  // private photosensitivityDetector: PhotosensitivityDetector | null = null;
+  // private enableSubtitleAnalysis: boolean = true;
+  // private enablePhotosensitivityDetection: boolean = true;
 
   // Protection system
   private protectionManager: ProtectionOverlayManager;
@@ -46,57 +51,57 @@ export class WarningManager {
 
   constructor(provider: IStreamingProvider) {
     this.provider = provider;
-    this.profile = null as any; // Will be initialized in initialize()
+    // Profile loaded asynchronously in initialize()
 
     // Initialize protection manager
     this.protectionManager = new ProtectionOverlayManager(provider);
 
-    // Initialize analyzers
-    if (this.enableSubtitleAnalysis) {
-      this.subtitleAnalyzer = new SubtitleAnalyzer();
-    }
-
-    if (this.enablePhotosensitivityDetection) {
-      this.photosensitivityDetector = new PhotosensitivityDetector();
-    }
+    // NOTE: Detection systems disabled - database-driven mode only
+    // if (this.enableSubtitleAnalysis) {
+    //   this.subtitleAnalyzer = new SubtitleAnalyzer();
+    // }
+    // if (this.enablePhotosensitivityDetection) {
+    //   this.photosensitivityDetector = new PhotosensitivityDetector();
+    // }
   }
 
   /**
    * Initialize the warning manager
    */
   async initialize(): Promise<void> {
-    console.log('[TW WarningManager] 🚀 Initializing warning manager...');
+    logger.info('Initializing warning manager...');
 
     try {
       // Load active profile
       this.profile = await ProfileManager.getActive();
-      console.log(`[TW WarningManager] ✅ Profile loaded: "${this.profile.name}" with ${this.profile.enabledCategories.length} enabled categories`);
-      console.log('[TW WarningManager] 📋 Enabled categories:', this.profile.enabledCategories);
+      logger.info(
+        `Profile loaded: "${this.profile.name}" with ${this.profile.enabledCategories.length} enabled categories`
+      );
+      logger.debug('Enabled categories:', this.profile.enabledCategories);
 
       if (this.profile.enabledCategories.length === 0) {
-        console.warn('[TW WarningManager] ⚠️ WARNING: No categories enabled in profile! All warnings will be filtered out.');
-        console.warn('[TW WarningManager] Please enable trigger categories in settings to see warnings.');
+        logger.warn('No categories enabled in profile! All warnings will be filtered out.');
       }
 
       // Get current media
       const media = await this.provider.getCurrentMedia();
       if (!media) {
-        console.warn('[TW WarningManager] ❌ No media detected');
+        logger.warn('No media detected');
         return;
       }
 
-      console.log(`[TW WarningManager] 🎬 Media detected: ${media.id} - "${media.title || 'Unknown'}"`);
-      console.log(`[TW WarningManager] Platform: ${this.provider.name}`);
+      logger.info(`Media detected: ${media.id} - "${media.title || 'Unknown'}"`);
+      logger.debug(`Platform: ${this.provider.name}`);
 
       // Fetch warnings for this media
       await this.fetchWarnings(media.id);
 
-      // Initialize real-time detection systems
-      this.initializeDetectors();
+      // NOTE: Real-time detection disabled - database-driven mode only
+      // this.initializeDetectors();
 
       // Start monitoring
       this.startMonitoring();
-      console.log('[TW WarningManager] ✅ Monitoring started');
+      logger.info('Monitoring started');
 
       // Listen for media changes
       this.provider.onMediaChange(async (newMedia) => {
@@ -107,77 +112,28 @@ export class WarningManager {
       StorageAdapter.onChange('activeProfileId', async () => {
         try {
           this.profile = await ProfileManager.getActive();
-          console.log('[TW WarningManager] 🔄 Profile changed, refilteting warnings...');
+          logger.info('Profile changed, refiltering warnings...');
           this.refilterWarnings();
         } catch (e) {
-          console.error('[TW WarningManager] Error handling profile change:', e);
+          logger.error('Error handling profile change:', e);
         }
       });
 
-      console.log('[TW WarningManager] ✅ Initialization complete');
+      logger.info('Initialization complete');
     } catch (error) {
-      console.error('[TW WarningManager] 💥 CRITICAL ERROR during initialization:', error);
-      // Don't re-throw, just log. This prevents the whole content script from dying if one part fails.
+      logger.error('CRITICAL ERROR during initialization:', error);
     }
   }
 
   /**
    * Initialize real-time detection systems
+   * NOTE: Currently disabled - database-driven mode only
+   * Detection code archived to src/_Detection_System/
    */
   private initializeDetectors(): void {
-    if (!this.profile) {
-      console.warn('[TW WarningManager] Cannot initialize detectors: Profile not loaded');
-      return;
-    }
-
-    console.log('[TW WarningManager] 🔍 Initializing real-time detection systems...');
-    const video = this.provider.getVideoElement();
-    if (!video) {
-      console.warn('[TW WarningManager] ❌ No video element found for detectors');
-      return;
-    }
-
-    // Initialize subtitle analyzer
-    if (this.subtitleAnalyzer) {
-      console.log('[TW WarningManager] 📝 Initializing subtitle analyzer for real-time detection...');
-      console.log('[TW WarningManager] 💡 Subtitle analyzer will monitor video captions/subtitles for trigger keywords');
-      console.log('[TW WarningManager] 💡 This works independently of your subtitle display preferences');
-
-      this.subtitleAnalyzer.initialize(video);
-
-      // Log translation stats if available
-      const stats = this.subtitleAnalyzer.getTranslationStats();
-      if (stats.enabled) {
-        console.log(`[TW WarningManager] 🌐 Translation enabled: ${stats.language} → English`);
-        console.log(`[TW WarningManager] 💾 Translation cache: ${stats.cacheStats.cacheSize} entries`);
-        console.log(`[TW WarningManager] 📊 API usage: ${stats.cacheStats.requestsToday}/${stats.cacheStats.dailyLimit} requests today (${stats.cacheStats.remainingRequests} remaining)`);
-      }
-
-      this.subtitleAnalyzer.onDetection((warning) => {
-        // Add detected warning to our list
-        if (this.profile.enabledCategories.includes(warning.categoryKey as any)) {
-          console.log(`[TW WarningManager] 🎯 Subtitle trigger detected and ADDED: ${warning.categoryKey} at ${Math.floor(warning.startTime)}s`);
-          console.log('[TW WarningManager] Full warning details:', warning);
-          this.warnings.push(warning);
-          console.log(`[TW WarningManager] Total warnings now: ${this.warnings.length}`);
-        } else {
-          console.log(`[TW WarningManager] ⏭️ Subtitle trigger detected but SKIPPED (not in enabled categories): ${warning.categoryKey}`);
-        }
-      });
-    }
-
-    // Initialize photosensitivity detector
-    if (this.photosensitivityDetector) {
-      console.log('[TW WarningManager] ⚡ Initializing photosensitivity detector...');
-      this.photosensitivityDetector.initialize(video);
-      this.photosensitivityDetector.onDetection((warning) => {
-        // Always show photosensitivity warnings (critical for health)
-        console.warn('[TW WarningManager] ⚠️ Photosensitivity warning detected and ADDED:', warning);
-        this.warnings.push(warning);
-      });
-    }
-
-    console.log('[TW WarningManager] ✅ Detection systems initialized');
+    // Detection systems disabled for now
+    // Will be re-enabled when pre-analysis becomes possible
+    logger.debug('Real-time detection disabled - using database timestamps only');
   }
 
   /**
@@ -218,27 +174,57 @@ export class WarningManager {
     // Fetch from backend
     console.log(`[TW WarningManager] 🌐 Fetching warnings from backend for video: ${videoId}`);
     const allWarnings = await SupabaseClient.getTriggers(videoId);
-    console.log(`[TW WarningManager] 📦 Received ${allWarnings.length} total warnings from backend`);
+    console.log(
+      `[TW WarningManager] 📦 Received ${allWarnings.length} total warnings from backend`
+    );
 
     if (allWarnings.length === 0) {
       console.warn('[TW WarningManager] ⚠️ No triggers found in database for this video');
-      console.warn('[TW WarningManager] 💡 Tip: You can add triggers using the extension popup or overlay');
+      console.warn(
+        '[TW WarningManager] 💡 Tip: You can add triggers using the extension popup or overlay'
+      );
     } else {
-      console.log('[TW WarningManager] 📊 All categories in database:', [...new Set(allWarnings.map(w => w.categoryKey))].join(', '));
-      console.log('[TW WarningManager] 📊 All trigger times:', allWarnings.map(w => `${w.categoryKey}: ${Math.floor(w.startTime)}s-${Math.floor(w.endTime)}s`));
+      console.log(
+        '[TW WarningManager] 📊 All categories in database:',
+        [...new Set(allWarnings.map((w) => w.categoryKey))].join(', ')
+      );
+      console.log(
+        '[TW WarningManager] 📊 All trigger times:',
+        allWarnings.map(
+          (w) => `${w.categoryKey}: ${Math.floor(w.startTime)}s-${Math.floor(w.endTime)}s`
+        )
+      );
     }
 
     // Filter by profile
     this.warnings = this.filterWarningsByProfile(allWarnings);
-    console.log(`[TW WarningManager] ✅ Filtered to ${this.warnings.length} warnings based on profile`);
+    console.log(
+      `[TW WarningManager] ✅ Filtered to ${this.warnings.length} warnings based on profile`
+    );
 
     if (this.warnings.length > 0) {
-      console.log('[TW WarningManager] 🎯 Active warning categories:', this.warnings.map(w => w.categoryKey));
-      console.log('[TW WarningManager] 🎯 Active warning times:', this.warnings.map(w => `${w.categoryKey}: ${Math.floor(w.startTime)}s-${Math.floor(w.endTime)}s`));
+      console.log(
+        '[TW WarningManager] 🎯 Active warning categories:',
+        this.warnings.map((w) => w.categoryKey)
+      );
+      console.log(
+        '[TW WarningManager] 🎯 Active warning times:',
+        this.warnings.map(
+          (w) => `${w.categoryKey}: ${Math.floor(w.startTime)}s-${Math.floor(w.endTime)}s`
+        )
+      );
     } else if (allWarnings.length > 0) {
-      console.warn('[TW WarningManager] ⚠️ Triggers exist in database but none match your enabled categories!');
-      console.warn('[TW WarningManager] 💡 Database has these categories:', [...new Set(allWarnings.map(w => w.categoryKey))].join(', '));
-      console.warn('[TW WarningManager] 💡 Your profile has these enabled:', this.profile.enabledCategories.join(', '));
+      console.warn(
+        '[TW WarningManager] ⚠️ Triggers exist in database but none match your enabled categories!'
+      );
+      console.warn(
+        '[TW WarningManager] 💡 Database has these categories:',
+        [...new Set(allWarnings.map((w) => w.categoryKey))].join(', ')
+      );
+      console.warn(
+        '[TW WarningManager] 💡 Your profile has these enabled:',
+        this.profile.enabledCategories.join(', ')
+      );
       console.warn('[TW WarningManager] 💡 Enable matching categories in settings to see warnings');
     }
 
@@ -323,8 +309,13 @@ export class WarningManager {
     const leadTime = this.profile.leadTime;
 
     // Log check every 30 seconds for debugging
-    if (Math.floor(currentTime) % 30 === 0 && Math.floor(currentTime) !== Math.floor(this.lastCheckTime / 1000)) {
-      console.log(`[TW WarningManager] 🔍 Checking warnings at ${Math.floor(currentTime)}s (${this.warnings.length} total warnings, lead time: ${leadTime}s)`);
+    if (
+      Math.floor(currentTime) % 30 === 0 &&
+      Math.floor(currentTime) !== Math.floor(this.lastCheckTime / 1000)
+    ) {
+      console.log(
+        `[TW WarningManager] 🔍 Checking warnings at ${Math.floor(currentTime)}s (${this.warnings.length} total warnings, lead time: ${leadTime}s)`
+      );
     }
 
     for (const warning of this.warnings) {
@@ -338,13 +329,17 @@ export class WarningManager {
 
       if (isActive && !this.activeWarnings.has(warning.id)) {
         // Warning just became active
-        console.log(`[TW WarningManager] 🚨 WARNING ACTIVE: ${warning.categoryKey} at ${Math.floor(currentTime)}s (${warning.startTime}-${warning.endTime})`);
+        console.log(
+          `[TW WarningManager] 🚨 WARNING ACTIVE: ${warning.categoryKey} at ${Math.floor(currentTime)}s (${warning.startTime}-${warning.endTime})`
+        );
         this.activeWarnings.add(warning.id);
         this.triggerWarning(warning, 0, true);
         this.applyWarningAction(warning, true);
       } else if (isUpcoming && !this.activeWarnings.has(warning.id)) {
         // Upcoming warning
-        console.log(`[TW WarningManager] ⏰ UPCOMING WARNING: ${warning.categoryKey} in ${Math.floor(timeUntilStart)}s`);
+        console.log(
+          `[TW WarningManager] ⏰ UPCOMING WARNING: ${warning.categoryKey} in ${Math.floor(timeUntilStart)}s`
+        );
         this.triggerWarning(warning, timeUntilStart, false);
       } else if (!isActive && this.activeWarnings.has(warning.id)) {
         // Warning ended
@@ -361,7 +356,9 @@ export class WarningManager {
    */
   private triggerWarning(warning: Warning, timeUntilStart: number, isActive: boolean): void {
     if (!this.onWarningCallback) {
-      console.warn('[TW WarningManager] ⚠️ Warning callback not registered! Cannot display warning.');
+      console.warn(
+        '[TW WarningManager] ⚠️ Warning callback not registered! Cannot display warning.'
+      );
       return;
     }
 
@@ -374,7 +371,9 @@ export class WarningManager {
       action,
     };
 
-    console.log(`[TW WarningManager] 📤 Sending warning to BannerManager: ${warning.categoryKey} (${isActive ? 'ACTIVE' : 'UPCOMING'})`);
+    console.log(
+      `[TW WarningManager] 📤 Sending warning to BannerManager: ${warning.categoryKey} (${isActive ? 'ACTIVE' : 'UPCOMING'})`
+    );
     this.onWarningCallback(activeWarning);
   }
 
@@ -497,14 +496,13 @@ export class WarningManager {
       this.protectionManager.dispose();
     }
 
-    // Dispose detectors
-    if (this.subtitleAnalyzer) {
-      this.subtitleAnalyzer.dispose();
-    }
-
-    if (this.photosensitivityDetector) {
-      this.photosensitivityDetector.dispose();
-    }
+    // NOTE: Detection systems disabled - see src/_Detection_System/
+    // if (this.subtitleAnalyzer) {
+    //   this.subtitleAnalyzer.dispose();
+    // }
+    // if (this.photosensitivityDetector) {
+    //   this.photosensitivityDetector.dispose();
+    // }
 
     this.activeWarnings.clear();
     this.warnings = [];

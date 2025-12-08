@@ -17,21 +17,22 @@ import type {
   ProfilesResponse,
   VoidResponse,
 } from '@shared/types/Messages.types';
+import { createLogger } from '@shared/utils/logger';
 
-console.log('[TW Background] Service worker started');
+const logger = createLogger('Background');
 
 /**
  * Initialize Supabase client on startup
  */
 async function initialize(): Promise<void> {
-  console.log('[TW Background] Initializing...');
+  logger.info('Initializing...');
 
   try {
     // Initialize Supabase in the background (non-blocking)
     // Extension should work even if Supabase is unavailable
     SupabaseClient.initialize()
-      .then(() => console.log('[TW Background] Supabase connected'))
-      .catch((error) => console.warn('[TW Background] Supabase unavailable:', error));
+      .then(() => logger.info('Supabase connected'))
+      .catch((error) => logger.warn('Supabase unavailable:', error));
 
     // Ensure default profile exists (uses local storage, doesn't need Supabase)
     await ProfileManager.getActive();
@@ -39,9 +40,9 @@ async function initialize(): Promise<void> {
     // Set up keepalive alarm (every 1 minute)
     browser.alarms.create('keepalive', { periodInMinutes: 1 });
 
-    console.log('[TW Background] Initialization complete');
+    logger.info('Initialization complete');
   } catch (error) {
-    console.error('[TW Background] Initialization error:', error);
+    logger.error('Initialization error:', error);
   }
 }
 
@@ -52,7 +53,7 @@ async function handleMessage(
   message: Message,
   sender: browser.Runtime.MessageSender
 ): Promise<MessageResponse> {
-  console.log('[TW Background] Received message:', message.type, sender.tab?.id);
+  logger.debug('Received message:', message.type, sender.tab?.id);
 
   try {
     switch (message.type) {
@@ -73,12 +74,12 @@ async function handleMessage(
 
       case 'GET_ACTIVE_PROFILE': {
         try {
-          console.log('[TW Background] Getting active profile...');
+          logger.debug('Getting active profile...');
           const profile = await ProfileManager.getActive();
-          console.log('[TW Background] Active profile retrieved:',profile?.name);
+          logger.debug('Active profile retrieved:', profile?.name);
           return { success: true, data: profile } as ProfileResponse;
         } catch (error) {
-          console.error('[TW Background] Error getting active profile:', error);
+          logger.error('Error getting active profile:', error);
           // Return a minimal default profile so popup doesn't hang
           return {
             success: true,
@@ -126,12 +127,12 @@ async function handleMessage(
 
       case 'GET_ALL_PROFILES': {
         try {
-          console.log('[TW Background] Getting all profiles...');
+          logger.debug('Getting all profiles...');
           const profiles = await ProfileManager.getAll();
-          console.log('[TW Background] Retrieved', profiles.length, 'profiles');
+          logger.debug('Retrieved', profiles.length, 'profiles');
           return { success: true, data: profiles } as ProfilesResponse;
         } catch (error) {
-          console.error('[TW Background] Error getting profiles:', error);
+          logger.error('Error getting profiles:', error);
           // Return empty array so popup doesn't hang
           return { success: true, data: [] } as ProfilesResponse;
         }
@@ -153,7 +154,7 @@ async function handleMessage(
           timestamp: message.timestamp,
           savedAt: Date.now(),
         });
-        console.log('[TW Background] Stored quick add context:', message.videoId, message.timestamp);
+        logger.debug('Stored quick add context:', message.videoId, message.timestamp);
         return { success: true, data: undefined } as VoidResponse;
       }
 
@@ -173,7 +174,7 @@ async function handleMessage(
         };
     }
   } catch (error) {
-    console.error('[TW Background] Error handling message:', error);
+    logger.error('Error handling message:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -196,10 +197,10 @@ async function broadcastProfileChange(profileId: string): Promise<void> {
             type: 'PROFILE_CHANGED',
             profileId,
           });
-          console.log('[TW Background] Sent profile change to tab:', tab.id);
+          logger.debug('Sent profile change to tab:', tab.id);
         } catch (error) {
           // Tab might not have content script loaded yet, or user navigated away
-          console.warn('[TW Background] Failed to send message to tab:', tab.id);
+          logger.warn('Failed to send message to tab:', tab.id);
         }
       }
     }
@@ -211,8 +212,8 @@ async function broadcastProfileChange(profileId: string): Promise<void> {
  */
 function handleAlarm(alarm: browser.Alarms.Alarm): void {
   if (alarm.name === 'keepalive') {
-    // Just log to keep service worker alive
-    console.log('[TW Background] Keepalive ping');
+    // Keepalive ping - no logging needed in production
+    logger.debug('Keepalive ping');
   }
 }
 
@@ -220,7 +221,7 @@ function handleAlarm(alarm: browser.Alarms.Alarm): void {
  * Handle extension installation/update
  */
 async function handleInstalled(details: browser.Runtime.OnInstalledDetailsType): Promise<void> {
-  console.log('[TW Background] Extension installed/updated:', details.reason);
+  logger.info('Extension installed/updated:', details.reason);
 
   if (details.reason === 'install') {
     // First installation
@@ -229,10 +230,10 @@ async function handleInstalled(details: browser.Runtime.OnInstalledDetailsType):
     // Create default profile
     await ProfileManager.getActive();
 
-    console.log('[TW Background] First-time setup complete');
+    logger.info('First-time setup complete');
   } else if (details.reason === 'update') {
     // Extension updated
-    console.log('[TW Background] Extension updated to version:', browser.runtime.getManifest().version);
+    logger.info('Extension updated to version:', browser.runtime.getManifest().version);
   }
 }
 

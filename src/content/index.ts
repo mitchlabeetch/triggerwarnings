@@ -1,82 +1,243 @@
 /**
  * Content script - main entry point
  * Runs on streaming platform pages to detect video and show warnings
+ *
+ * NEW DATABASE-DRIVEN WORKFLOW:
+ * 1. Detect video and provider
+ * 2. Pause video immediately
+ * 3. Show pre-watch safety screen with trigger info
+ * 4. After 10s or skip, show watching overlay
+ * 5. Monitor playback for timestamp-based warnings
  */
-
-// IMMEDIATE console log to verify script loads
-console.log('🚀 [TW] Content script file loaded at:', new Date().toISOString());
-console.log('🌐 [TW] Current URL:', window.location.href);
-console.log('📍 [TW] Document ready state:', document.readyState);
+// Content script entry point - logging happens after imports
 
 import browser from 'webextension-polyfill';
 import { ProviderFactory } from './providers/ProviderFactory';
 import { WarningManager } from '@core/warning-system/WarningManager';
 import { BannerManager } from './banner/BannerManager';
 import { ActiveIndicatorManager } from './indicator/ActiveIndicatorManager';
-import AnalysisOverlay from './overlay/AnalysisOverlay.svelte';
-import type { IStreamingProvider } from '@shared/types/Provider.types';
-import type { ActiveWarning } from '@shared/types/Warning.types';
+import { PreWatchManager } from './prewatch/PreWatchManager';
+import { WatchingOverlayManager } from './watching/WatchingOverlayManager';
+import { triggerDatabaseService } from '@database/services/TriggerDatabaseService';
+import type { IStreamingProvider, MediaInfo } from '@shared/types/Provider.types';
+import type { ActiveWarning, StreamingPlatform } from '@shared/types/Warning.types';
+import type { MediaTriggerData } from '@shared/types/MediaContent.types';
 import { createLogger } from '@shared/utils/logger';
 
 const logger = createLogger('Content');
+
+/**
+ * Map provider names to StreamingPlatform type
+ */
+function getStreamingPlatform(providerName: string): StreamingPlatform {
+  const mapping: Record<string, StreamingPlatform> = {
+    Netflix: 'netflix',
+    'Prime Video': 'prime_video',
+    'Disney+': 'disney_plus',
+    Hulu: 'hulu',
+    Max: 'max',
+    Peacock: 'peacock',
+    YouTube: 'youtube',
+  };
+  return mapping[providerName] || 'netflix';
+}
 
 class TriggerWarningsContent {
   private provider: IStreamingProvider | null = null;
   private warningManager: WarningManager | null = null;
   private bannerManager: BannerManager | null = null;
   private indicatorManager: ActiveIndicatorManager | null = null;
+  private preWatchManager: PreWatchManager | null = null;
+  private watchingOverlayManager: WatchingOverlayManager | null = null;
   private initialized = false;
   private activeWarningsMap: Map<string, ActiveWarning> = new Map();
+  private currentMediaInfo: MediaInfo | null = null;
+  private triggerData: MediaTriggerData | null = null;
+  private monitoringIntervalId: ReturnType<typeof setInterval> | null = null;
+  private useNewWorkflow = true; // Feature flag for new database-driven workflow
 
   async initialize(): Promise<void> {
     if (this.initialized) {
-      console.log('⚠️ [TW] Already initialized, skipping');
+      logger.debug('Already initialized, skipping');
       return;
     }
 
-    console.log('🎬 [TW] Starting initialization...');
-    logger.info('Initializing content script...');
+    logger.info('Starting initialization...');
+    logger.info('Initializing content script with database-driven workflow...');
 
     try {
       // Check if this site is supported
-      console.log('🔍 [TW] Checking if site is supported...');
+      logger.debug('Checking if site is supported...');
       if (!ProviderFactory.isSupported()) {
-        console.warn('❌ [TW] Site not supported:', window.location.hostname);
-        logger.warn('Site not supported');
+        logger.warn('Site not supported:', window.location.hostname);
         return;
       }
-      console.log('✅ [TW] Site is supported');
+      logger.debug('Site is supported');
 
       // Create provider for current site
-      console.log('🏭 [TW] Creating provider...');
+      logger.debug('Creating provider...');
       this.provider = await ProviderFactory.createProvider();
       if (!this.provider) {
-        console.error('❌ [TW] Failed to create provider');
         logger.error('Failed to create provider');
         return;
       }
 
-      console.log(`✅ [TW] Provider created: ${this.provider.name}`);
       logger.info(`Provider initialized: ${this.provider.name}`);
 
+      // Initialize database service
+      await triggerDatabaseService.initialize();
+
+      // Check if we should use the new workflow or fallback to legacy
+      if (this.useNewWorkflow) {
+        await this.initializeNewWorkflow();
+      } else {
+        await this.initializeLegacyWorkflow();
+      }
+    } catch (error) {
+      logger.error('Initialization failed:', error);
+      if (error instanceof Error) {
+        logger.error('Error details:', { message: error.message, stack: error.stack });
+      }
+      // Fallback to legacy workflow on error
+      await this.initializeLegacyWorkflow();
+    }
+  }
+
+  /**
+   * NEW DATABASE-DRIVEN WORKFLOW
+   * 1. Get video ID from provider
+   * 2. Pause video
+   * 3. Show pre-watch safety screen
+   * 4. On complete, show watching overlay and start monitoring
+   */
+  private async initializeNewWorkflow(): Promise<void> {
+    if (!this.provider) return;
+
+    logger.info('Initializing new database-driven workflow...');
+
+    // Initialize pre-watch manager
+    this.preWatchManager = new PreWatchManager(this.provider);
+    await this.preWatchManager.initialize();
+
+    // Get current media info
+    this.currentMediaInfo = await this.provider.getCurrentMedia();
+
+    if (!this.currentMediaInfo) {
+      logger.warn('No media info available, using legacy workflow');
+      await this.initializeLegacyWorkflow();
+      return;
+    }
+
+    logger.info('Current media:', this.currentMediaInfo);
+
+    // Get platform and video ID
+    const platform = getStreamingPlatform(this.provider.name);
+    const videoId = this.currentMediaInfo.id;
+
+    // Show pre-watch safety screen
+    await this.preWatchManager.show(platform, videoId, {
+      onComplete: () => this.onPreWatchComplete(),
+      onSkip: () => this.onPreWatchComplete(),
+      onError: (error) => {
+        logger.error('Pre-watch error:', error);
+        this.onPreWatchComplete();
+      },
+    });
+
+    this.initialized = true;
+    logger.info('New workflow initialized - pre-watch screen showing');
+  }
+
+  /**
+   * Called when pre-watch screen completes (countdown or skip)
+   */
+  private async onPreWatchComplete(): Promise<void> {
+    logger.info('Pre-watch completed, starting watching mode...');
+
+    if (!this.provider) return;
+
+    // Get trigger data from pre-watch manager
+    this.triggerData = this.preWatchManager?.getTriggerData() || null;
+
+    // Initialize watching overlay
+    this.watchingOverlayManager = new WatchingOverlayManager(this.provider);
+
+    if (this.triggerData) {
+      await this.watchingOverlayManager.initialize(this.triggerData);
+    }
+
+    // Set up watching overlay callbacks
+    this.watchingOverlayManager.setCallbacks({
+      onIgnoreThisTime: (warningId) => {
+        logger.info('Ignore this time:', warningId);
+      },
+      onIgnoreForVideo: (category) => {
+        logger.info('Ignore for video:', category);
+      },
+      onSkipToEnd: (warning) => {
+        logger.info('Skip to end:', warning.id);
+      },
+      onAddTrigger: () => {
+        this.handleQuickAddTrigger();
+      },
+    });
+
+    // Start monitoring playback for timestamp-based warnings
+    this.startPlaybackMonitoring();
+
+    // Also initialize legacy banner manager as fallback
+    await this.initializeLegacyBanner();
+
+    logger.info('Watching mode active');
+  }
+
+  /**
+   * Start monitoring video playback for upcoming warnings
+   */
+  private startPlaybackMonitoring(): void {
+    if (this.monitoringIntervalId) {
+      clearInterval(this.monitoringIntervalId);
+    }
+
+    // Check every 250ms for upcoming warnings
+    this.monitoringIntervalId = setInterval(() => {
+      if (!this.provider || !this.watchingOverlayManager) return;
+
+      const video = this.provider.getVideoElement();
+      if (video && !video.paused) {
+        this.watchingOverlayManager.checkWarnings(video.currentTime);
+      }
+    }, 250);
+
+    logger.debug('Playback monitoring started');
+  }
+
+  /**
+   * Stop monitoring video playback
+   */
+  private stopPlaybackMonitoring(): void {
+    if (this.monitoringIntervalId) {
+      clearInterval(this.monitoringIntervalId);
+      this.monitoringIntervalId = null;
+    }
+  }
+
+  /**
+   * LEGACY WORKFLOW (backward compatible)
+   * Uses the existing WarningManager and BannerManager
+   */
+  private async initializeLegacyWorkflow(): Promise<void> {
+    if (!this.provider) return;
+
+    logger.info('Using legacy workflow...');
+
+    try {
       // Initialize warning manager
       this.warningManager = new WarningManager(this.provider);
       await this.warningManager.initialize();
 
-      // Initialize banner manager
-      this.bannerManager = new BannerManager(this.provider);
-      await this.bannerManager.initialize();
-
-      // Initialize active indicator
-      this.indicatorManager = new ActiveIndicatorManager(this.provider);
-      await this.indicatorManager.initialize();
-
-      // Initialize Analysis Overlay (Debug)
-      // TODO: Fix Svelte 5 compatibility issue with AnalysisOverlay
-      // const overlayDiv = document.createElement('div');
-      // overlayDiv.id = 'tw-analysis-overlay-root';
-      // document.body.appendChild(overlayDiv);
-      // new AnalysisOverlay({ target: overlayDiv });
+      // Initialize banner and indicator
+      await this.initializeLegacyBanner();
 
       // Connect warning manager to banner manager and indicator
       this.warningManager.onWarning((warning: ActiveWarning) => {
@@ -96,15 +257,15 @@ class TriggerWarningsContent {
       });
 
       // Set up banner callbacks
-      this.bannerManager.onIgnoreThisTime((warningId: string) => {
+      this.bannerManager?.onIgnoreThisTime((warningId: string) => {
         this.warningManager?.ignoreThisTime(warningId);
       });
 
-      this.bannerManager.onIgnoreForVideo((categoryKey: string) => {
+      this.bannerManager?.onIgnoreForVideo((categoryKey: string) => {
         this.warningManager?.ignoreForVideo(categoryKey);
       });
 
-      this.bannerManager.onVote(async (warningId: string, voteType: 'up' | 'down') => {
+      this.bannerManager?.onVote(async (warningId: string, voteType: 'up' | 'down') => {
         try {
           // 1. Send to background (optional, for remote sync)
           const response = await browser.runtime.sendMessage({
@@ -140,23 +301,36 @@ class TriggerWarningsContent {
       });
 
       // Set up indicator callbacks
-      // TODO: Re-enable when ActiveIndicator Svelte 5 compatibility is fixed
-      this.indicatorManager.onQuickAdd(() => {
+      this.indicatorManager?.onQuickAdd(() => {
         this.handleQuickAddTrigger();
       });
 
       this.initialized = true;
-      console.log('🎉 [TW] Content script initialized successfully!');
-      logger.info('Content script initialized successfully');
+      logger.info('Legacy workflow initialized successfully');
     } catch (error) {
-      console.error('💥 [TW] INITIALIZATION FAILED:', error);
-      console.error('💥 [TW] Error details:', {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        type: typeof error,
-      });
-      logger.error('Initialization error:', error);
+      logger.error('Legacy workflow initialization failed:', error);
+      if (error instanceof Error) {
+        logger.error('Error details:', { message: error.message, stack: error.stack });
+      }
     }
+  }
+
+  /**
+   * Initialize legacy banner and indicator managers
+   * Used by both new and legacy workflows
+   */
+  private async initializeLegacyBanner(): Promise<void> {
+    if (!this.provider) return;
+
+    // Initialize banner manager
+    this.bannerManager = new BannerManager(this.provider);
+    await this.bannerManager.initialize();
+
+    // Initialize active indicator
+    this.indicatorManager = new ActiveIndicatorManager(this.provider);
+    await this.indicatorManager.initialize();
+
+    logger.debug('Legacy banner and indicator initialized');
   }
 
   /**
@@ -183,8 +357,7 @@ class TriggerWarningsContent {
       // Get video element and current time
       const videoElement = this.provider.getVideoElement();
       if (!videoElement) {
-        logger.error('No video element found');
-        alert('Unable to detect video player. Please try again.');
+        logger.warn('Quick add failed: No video element found');
         return;
       }
 
@@ -193,8 +366,7 @@ class TriggerWarningsContent {
       // Get current media info
       const mediaInfo = await this.provider.getCurrentMedia();
       if (!mediaInfo) {
-        logger.error('No media info found');
-        alert('Unable to detect current video. Please try again.');
+        logger.warn('Quick add failed: No media info found');
         return;
       }
 
@@ -214,11 +386,9 @@ class TriggerWarningsContent {
           logger.error('Failed to store quick add context:', error);
         });
 
-      // For now, alert the user - later this will open a proper submission UI
-      // TODO: Implement proper trigger submission UI in the content script or popup
-      alert(
-        `Quick Add Trigger\n\nCurrent timestamp: ${Math.floor(currentTime)}s\n\nPlease use the extension popup to complete the trigger submission.\n\n(Timestamp has been saved)`
-      );
+      // Context stored - user can now open popup to complete submission
+      // TODO: Implement proper trigger submission UI in the content script
+      logger.info(`Timestamp ${Math.floor(currentTime)}s saved. Open popup to submit trigger.`);
     } catch (error) {
       logger.error('Failed to get current timestamp:', error);
     }
@@ -247,6 +417,21 @@ class TriggerWarningsContent {
   dispose(): void {
     logger.info('Disposing content script...');
 
+    // Stop playback monitoring
+    this.stopPlaybackMonitoring();
+
+    // Dispose new workflow managers
+    if (this.preWatchManager) {
+      this.preWatchManager.dispose();
+      this.preWatchManager = null;
+    }
+
+    if (this.watchingOverlayManager) {
+      this.watchingOverlayManager.dispose();
+      this.watchingOverlayManager = null;
+    }
+
+    // Dispose legacy managers
     if (this.warningManager) {
       this.warningManager.dispose();
       this.warningManager = null;
@@ -267,28 +452,34 @@ class TriggerWarningsContent {
       this.provider = null;
     }
 
+    // Clear state
+    this.triggerData = null;
+    this.currentMediaInfo = null;
+    this.activeWarningsMap.clear();
     this.initialized = false;
+
+    logger.info('Content script disposed');
   }
 }
 
 // Create and initialize
-console.log('📦 [TW] Creating TriggerWarningsContent instance...');
+logger.debug('Creating TriggerWarningsContent instance...');
 const app = new TriggerWarningsContent();
 
 // Initialize when DOM is ready
-console.log('⏰ [TW] Setting up initialization trigger...');
+logger.debug('Setting up initialization trigger...');
 if (document.readyState === 'loading') {
-  console.log('⏳ [TW] DOM still loading, waiting for DOMContentLoaded...');
+  logger.debug('DOM still loading, waiting for DOMContentLoaded...');
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('✅ [TW] DOMContentLoaded fired, initializing...');
+    logger.debug('DOMContentLoaded fired, initializing...');
     app.initialize().catch((err) => {
-      console.error('💥 [TW] Fatal error during initialization:', err);
+      logger.error('Fatal error during initialization:', err);
     });
   });
 } else {
-  console.log('✅ [TW] DOM already ready, initializing immediately...');
+  logger.debug('DOM already ready, initializing immediately...');
   app.initialize().catch((err) => {
-    console.error('💥 [TW] Fatal error during initialization:', err);
+    logger.error('Fatal error during initialization:', err);
   });
 }
 

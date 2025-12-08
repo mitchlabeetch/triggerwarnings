@@ -4,6 +4,9 @@
 
 import { BaseProvider } from './BaseProvider';
 import type { MediaInfo } from '@shared/types/Provider.types';
+import { createLogger } from '@shared/utils/logger';
+
+const logger = createLogger('Max');
 
 export class MaxProvider extends BaseProvider {
   readonly name = 'Max';
@@ -11,11 +14,12 @@ export class MaxProvider extends BaseProvider {
 
   private videoElement: HTMLVideoElement | null = null;
   private lastSeekTime = 0;
+  private urlCheckIntervalId: ReturnType<typeof setInterval> | null = null;
 
   async initialize(): Promise<void> {
     const video = await this.waitForElement<HTMLVideoElement>('video');
     if (!video) {
-      console.error('Max video element not found');
+      logger.error('Video element not found');
       return;
     }
 
@@ -134,13 +138,13 @@ export class MaxProvider extends BaseProvider {
       }
     }, 1000);
 
-    (this as any)._urlCheckInterval = checkURL;
+    this.urlCheckIntervalId = checkURL;
   }
 
   override dispose(): void {
-    if ((this as any)._urlCheckInterval) {
-      clearInterval((this as any)._urlCheckInterval);
-      delete (this as any)._urlCheckInterval;
+    if (this.urlCheckIntervalId) {
+      clearInterval(this.urlCheckIntervalId);
+      this.urlCheckIntervalId = null;
     }
 
     super.dispose();

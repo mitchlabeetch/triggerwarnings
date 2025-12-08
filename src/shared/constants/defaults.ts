@@ -26,14 +26,7 @@ export const DEFAULT_DISPLAY_SETTINGS = {
 export const DEFAULT_PROFILE: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'> = {
   name: 'Default Profile',
   isDefault: true,
-  enabledCategories: [
-    'flashing_lights',
-    'gunshots',
-    'screams',
-    'blood',
-    'violence',
-    'jumpscares'
-  ],
+  enabledCategories: ['flashing_lights', 'gunshots', 'screams', 'blood', 'violence', 'jumpscares'],
   categoryActions: Object.fromEntries(
     CATEGORY_KEYS.map((key) => [key, DEFAULT_WARNING_ACTION])
   ) as Record<string, WarningAction>,
@@ -51,9 +44,22 @@ export const DEFAULT_PROFILE: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'> = 
 export const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
 // Supabase configuration
-export const SUPABASE_URL = 'https://rzkynplgzcxlaecxlylm.supabase.co';
-export const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6a3lucGxnemN4bGFlY3hseWxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MjE2OTAsImV4cCI6MjA3ODI5NzY5MH0.24lj8QXRK-FS8uQQRtA4H--laEDosdGBCGXnmmnWg_8';
+// Prefer environment variables, fall back to defaults for backwards compatibility
+const getEnvVar = (key: string, fallback: string): string => {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return (import.meta.env[key] as string) || fallback;
+  }
+  return fallback;
+};
+
+export const SUPABASE_URL = getEnvVar(
+  'VITE_SUPABASE_URL',
+  'https://rzkynplgzcxlaecxlylm.supabase.co'
+);
+export const SUPABASE_ANON_KEY = getEnvVar(
+  'VITE_SUPABASE_ANON_KEY',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6a3lucGxnemN4bGFlY3hseWxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MjE2OTAsImV4cCI6MjA3ODI5NzY5MH0.24lj8QXRK-FS8uQQRtA4H--laEDosdGBCGXnmmnWg_8'
+);
 
 // Auto-approval thresholds
 export const AUTO_APPROVE_THRESHOLD = 3;

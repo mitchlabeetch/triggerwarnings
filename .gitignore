@@ -26,7 +26,8 @@ pnpm-lock.yaml
 !303.js
 !591.js
 !node_modules_ws_browser_js.offscreen.bundle.js
-
+datatreat/*
+twkeyfiles/*
 
 # Environment variables with API keys
 scripts/.env
@@ -43,6 +44,7 @@ scripts/imdb-*.csv
 
 # Backups
 backup-*/
+./twkeyfiles/*
 
 # OS files
 .DS_Store

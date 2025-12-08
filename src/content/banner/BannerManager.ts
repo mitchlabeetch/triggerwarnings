@@ -118,7 +118,7 @@ export class BannerManager {
     logger.info(
       `[TW BannerManager] 📥 Received warning to show: ${warning.categoryKey} (${warning.isActive ? 'ACTIVE' : 'UPCOMING'})`
     );
-    console.log('[TW BannerManager] Full warning details:', warning);
+    logger.debug('Full warning details:', warning);
 
     this.activeWarnings.set(warning.id, warning);
     logger.info(`[TW BannerManager] Active warnings count: ${this.activeWarnings.size}`);
@@ -135,7 +135,7 @@ export class BannerManager {
 
   private updateBanner(): void {
     if (!this.bannerComponent) {
-      console.warn('[TW BannerManager] ⚠️ Cannot update banner - component not mounted!');
+      logger.warn('Cannot update banner - component not mounted!');
       return;
     }
 
@@ -150,12 +150,12 @@ export class BannerManager {
 
     logger.info(`[TW BannerManager] 🎨 Updating banner with ${warnings.length} warning(s)`);
     if (warnings.length > 0) {
-      console.log(
-        '[TW BannerManager] Warning categories being displayed:',
+      logger.debug(
+        'Warning categories displayed:',
         warnings.map((w) => w.categoryKey)
       );
     } else {
-      console.log('[TW BannerManager] No warnings to display');
+      logger.debug('No warnings to display');
     }
 
     this.bannerComponent.$set({ warnings });

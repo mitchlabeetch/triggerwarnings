@@ -4,11 +4,26 @@
 
 import type { TriggerCategory, WarningAction } from './Warning.types';
 
-export type BannerPosition = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+export type BannerPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
 
 export type Theme = 'light' | 'dark' | 'system';
 
-export type ProtectionType = 'none' | 'blackout' | 'mute' | 'both';
+// Extended protection types for database-driven warning system
+export type ProtectionType =
+  | 'none'
+  | 'blackout'
+  | 'mute'
+  | 'both'
+  | 'warn'
+  | 'hide'
+  | 'mute-and-hide'
+  | 'skip';
 
 export interface DisplaySettings {
   position: BannerPosition;
@@ -17,6 +32,14 @@ export interface DisplaySettings {
   transparency: number; // 0-100
   duration: number; // seconds
   spoilerFreeMode: boolean;
+
+  // Pre-watch screen settings
+  showPreWatchScreen?: boolean; // Whether to show the pre-watch safety screen
+  preWatchDuration?: number; // Minimum duration of pre-watch screen in seconds
+
+  // Warning lead time
+  warningLeadTime?: number; // Seconds before trigger to show warning
+
   // Overlay customization settings
   overlaySettings?: {
     buttonColor?: string;
@@ -35,6 +58,8 @@ export interface Profile {
 
   // Warning preferences
   enabledCategories: TriggerCategory[];
+  /** Alias for enabledCategories - used by newer components */
+  triggers?: TriggerCategory[];
   categoryActions: Record<TriggerCategory, WarningAction>;
 
   // Display settings

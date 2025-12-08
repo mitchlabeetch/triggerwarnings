@@ -10,6 +10,9 @@ import type {
 } from '../../shared/types/Profile.types';
 import { StorageAdapter } from '../storage/StorageAdapter';
 import { DEFAULT_PROFILE } from '../../shared/constants/defaults';
+import { createLogger } from '@shared/utils/logger';
+
+const logger = createLogger('ProfileManager');
 
 export class ProfileManager {
   private static cache: Map<string, Profile> = new Map();
@@ -30,7 +33,7 @@ export class ProfileManager {
 
     if (!profiles || !Array.isArray(profiles) || profiles.length === 0) {
       // Create default profile if none exist
-      console.log('[TW ProfileManager] No profiles found, creating default.');
+      logger.debug('No profiles found, creating default.');
       const defaultProfile = await this.createDefaultProfile();
       return [defaultProfile];
     }
@@ -88,7 +91,7 @@ export class ProfileManager {
   static async setActive(profileId: string): Promise<boolean> {
     const profile = await this.get(profileId);
     if (!profile) {
-      console.warn(`[TW ProfileManager] Cannot set active profile: ID ${profileId} not found.`);
+      logger.warn(`Cannot set active profile: ID ${profileId} not found.`);
       return false;
     }
 
@@ -213,7 +216,7 @@ export class ProfileManager {
 
     // Can't delete the last profile
     if (profiles.length <= 1) {
-      console.warn('[TW ProfileManager] Cannot delete the last profile');
+      logger.warn('Cannot delete the last profile');
       return false;
     }
 
@@ -247,7 +250,7 @@ export class ProfileManager {
     try {
       await this.getActive();
     } catch (e) {
-      console.error('[TW ProfileManager] Initialization error', e);
+      logger.error('Initialization error', e);
       await this.createDefaultProfile();
     }
   }
@@ -256,7 +259,7 @@ export class ProfileManager {
    * Create the default profile
    */
   private static async createDefaultProfile(): Promise<Profile> {
-    console.log('[TW ProfileManager] Creating Default Profile');
+    logger.debug('Creating Default Profile');
 
     const now = new Date().toISOString();
     const defaultProfile: Profile = {
@@ -293,7 +296,7 @@ export class ProfileManager {
       const data = JSON.parse(json);
 
       if (!data.name || !data.enabledCategories) {
-        console.error('[TW ProfileManager] Invalid profile data for import');
+        logger.error('Invalid profile data for import');
         return null;
       }
 
@@ -315,7 +318,7 @@ export class ProfileManager {
 
       return await this.get(profile.id);
     } catch (error) {
-      console.error('[TW ProfileManager] Error importing profile:', error);
+      logger.error('Error importing profile:', error);
       return null;
     }
   }

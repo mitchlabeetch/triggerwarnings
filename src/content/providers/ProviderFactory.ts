@@ -10,6 +10,9 @@ import { HuluProvider } from './HuluProvider';
 import { DisneyPlusProvider } from './DisneyPlusProvider';
 import { MaxProvider } from './MaxProvider';
 import { PeacockProvider } from './PeacockProvider';
+import { createLogger } from '@shared/utils/logger';
+
+const logger = createLogger('ProviderFactory');
 
 export class ProviderFactory {
   private static providers: Array<new () => IStreamingProvider> = [
@@ -37,16 +40,16 @@ export class ProviderFactory {
       if (matches) {
         try {
           await instance.initialize();
-          console.log(`[TW] Initialized provider: ${instance.name}`);
+          logger.info(`Initialized provider: ${instance.name}`);
           return instance;
         } catch (error) {
-          console.error(`[TW] Failed to initialize ${instance.name}:`, error);
+          logger.error(`Failed to initialize ${instance.name}:`, error);
           return null;
         }
       }
     }
 
-    console.warn('[TW] No matching provider found for domain:', currentDomain);
+    logger.warn('No matching provider found for domain:', currentDomain);
     return null;
   }
 

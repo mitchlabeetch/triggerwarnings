@@ -4,6 +4,9 @@
 
 import { BaseProvider } from './BaseProvider';
 import type { MediaInfo } from '@shared/types/Provider.types';
+import { createLogger } from '@shared/utils/logger';
+
+const logger = createLogger('Netflix');
 
 export class NetflixProvider extends BaseProvider {
   readonly name = 'Netflix';
@@ -11,39 +14,40 @@ export class NetflixProvider extends BaseProvider {
 
   private videoElement: HTMLVideoElement | null = null;
   private lastSeekTime = 0;
+  private urlCheckIntervalId: ReturnType<typeof setInterval> | null = null;
 
   async initialize(): Promise<void> {
-    console.log('[TW Netflix] Starting initialization...');
+    logger.debug('Starting initialization...');
 
     // Wait for video element to load with extended timeout
     const video = await this.waitForElement<HTMLVideoElement>('video', 15000);
     if (!video) {
-      console.error('[TW Netflix] Video element not found after 15s timeout');
-      console.log('[TW Netflix] Attempting fallback detection...');
+      logger.error('Video element not found after 15s timeout');
+      logger.debug('Attempting fallback detection...');
 
       // Fallback: try multiple times
       for (let i = 0; i < 5; i++) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         const fallbackVideo = document.querySelector<HTMLVideoElement>('video');
         if (fallbackVideo) {
-          console.log('[TW Netflix] Video element found via fallback!');
+          logger.debug('Video element found via fallback!');
           this.videoElement = fallbackVideo;
           break;
         }
       }
 
       if (!this.videoElement) {
-        console.error('[TW Netflix] Failed to find video element after all attempts');
+        logger.error('Failed to find video element after all attempts');
         return;
       }
     } else {
       this.videoElement = video;
-      console.log('[TW Netflix] Video element found successfully');
+      logger.debug('Video element found successfully');
     }
 
     // Set up video event listeners
     this.setupVideoListeners();
-    console.log('[TW Netflix] Video listeners set up');
+    logger.debug('Video listeners set up');
 
     // Monitor for URL changes (switching episodes)
     this.monitorURLChanges();
@@ -51,13 +55,13 @@ export class NetflixProvider extends BaseProvider {
     // Get initial media info
     const media = await this.getCurrentMedia();
     if (media) {
-      console.log('[TW Netflix] Initial media info:', media);
+      logger.debug('Initial media info:', media);
       await this.triggerMediaChangeCallbacks(media);
     } else {
-      console.warn('[TW Netflix] No media info available');
+      logger.warn('No media info available');
     }
 
-    console.log('[TW Netflix] Initialization complete');
+    logger.info('Initialization complete');
   }
 
   async getCurrentMedia(): Promise<MediaInfo | null> {
@@ -86,12 +90,12 @@ export class NetflixProvider extends BaseProvider {
     // Try to find video element in DOM
     const video = document.querySelector<HTMLVideoElement>('video');
     if (video) {
-      console.log('[TW Netflix] Video element re-acquired from DOM');
+      logger.debug('Video element re-acquired from DOM');
       this.videoElement = video;
       // Re-setup listeners if video element changed
       this.setupVideoListeners();
     } else {
-      console.warn('[TW Netflix] No video element found in DOM');
+      logger.warn('No video element found in DOM');
     }
 
     return this.videoElement;
@@ -100,9 +104,7 @@ export class NetflixProvider extends BaseProvider {
   getInjectionPoint(): HTMLElement | null {
     // Netflix player container
     return (
-      document.querySelector('.watch-video') ||
-      document.querySelector('.NFPlayer') ||
-      document.body
+      document.querySelector('.watch-video') || document.querySelector('.NFPlayer') || document.body
     );
   }
 
@@ -188,7 +190,7 @@ export class NetflixProvider extends BaseProvider {
     }, 1000);
 
     // Store interval for cleanup
-    (this as any)._urlCheckInterval = checkURL;
+    this.urlCheckIntervalId = checkURL;
   }
 
   protected override handleDOMMutations(_mutations: MutationRecord[]): void {
@@ -204,9 +206,9 @@ export class NetflixProvider extends BaseProvider {
 
   override dispose(): void {
     // Clear URL check interval
-    if ((this as any)._urlCheckInterval) {
-      clearInterval((this as any)._urlCheckInterval);
-      delete (this as any)._urlCheckInterval;
+    if (this.urlCheckIntervalId) {
+      clearInterval(this.urlCheckIntervalId);
+      this.urlCheckIntervalId = null;
     }
 
     super.dispose();
