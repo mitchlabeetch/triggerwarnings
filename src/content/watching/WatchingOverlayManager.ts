@@ -88,6 +88,12 @@ export class WatchingOverlayManager {
   private originalVolume = 1;
   private wasProtectionApplied = false;
 
+  // Player bounds and fullscreen tracking
+  private playerBounds: DOMRect | null = null;
+  private isFullscreen = false;
+  private boundsObserver: ResizeObserver | null = null;
+  private fullscreenCleanup: (() => void) | null = null;
+
   // Callbacks
   private callbacks: OverlayCallbacks = {};
 
@@ -205,7 +211,13 @@ export class WatchingOverlayManager {
     injectContainer(this.container, injectionPoint);
     logger.debug('Watching overlay container injected');
 
-    // Mount Svelte component
+    // Start player bounds tracking
+    this.startBoundsTracking(injectionPoint);
+
+    // Start fullscreen tracking
+    this.startFullscreenTracking();
+
+    // Mount Svelte component with player bounds awareness
     this.component = new WatchingOverlay({
       target: this.container,
       props: {
@@ -216,6 +228,8 @@ export class WatchingOverlayManager {
         position: this.position,
         protectionType: this.protectionType,
         helperMode: this.helperMode,
+        playerBounds: this.playerBounds,
+        isFullscreen: this.isFullscreen,
         onAddTrigger: () => this.handleAddTrigger(),
         onIgnoreThisTime: (id: string) => this.handleIgnoreThisTime(id),
         onIgnoreAllVideo: (cat: TriggerCategory) => this.handleIgnoreForVideo(cat),
@@ -236,6 +250,49 @@ export class WatchingOverlayManager {
   }
 
   /**
+   * Start tracking player container bounds using ResizeObserver
+   */
+  private startBoundsTracking(playerContainer: HTMLElement): void {
+    // Get initial bounds
+    this.playerBounds = playerContainer.getBoundingClientRect();
+
+    // Create ResizeObserver to track changes
+    this.boundsObserver = new ResizeObserver(() => {
+      this.playerBounds = playerContainer.getBoundingClientRect();
+      this.updateOverlay();
+    });
+
+    this.boundsObserver.observe(playerContainer);
+    logger.debug('Player bounds tracking started');
+  }
+
+  /**
+   * Start tracking fullscreen state
+   */
+  private startFullscreenTracking(): void {
+    const handleFullscreenChange = () => {
+      this.isFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement
+      );
+      this.updateOverlay();
+      logger.debug('Fullscreen state changed:', this.isFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+
+    // Store cleanup function
+    this.fullscreenCleanup = () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    };
+  }
+
+  /**
    * Update the overlay with current state
    */
   private updateOverlay(): void {
@@ -247,6 +304,8 @@ export class WatchingOverlayManager {
       countdownSeconds: this.countdownSeconds,
       protectionType: this.protectionType,
       helperMode: this.helperMode,
+      playerBounds: this.playerBounds,
+      isFullscreen: this.isFullscreen,
     });
   }
 
@@ -597,6 +656,18 @@ export class WatchingOverlayManager {
     // Remove protection
     this.removeProtection();
 
+    // Clean up bounds observer
+    if (this.boundsObserver) {
+      this.boundsObserver.disconnect();
+      this.boundsObserver = null;
+    }
+
+    // Clean up fullscreen listener
+    if (this.fullscreenCleanup) {
+      this.fullscreenCleanup();
+      this.fullscreenCleanup = null;
+    }
+
     // Destroy component
     if (this.component) {
       this.component.$destroy();
@@ -617,6 +688,7 @@ export class WatchingOverlayManager {
     this.ignoredWarningsThisSession.clear();
     this.ignoredCategoriesThisVideo.clear();
     this.isInitialized = false;
+    this.playerBounds = null;
 
     logger.info('WatchingOverlayManager disposed');
   }

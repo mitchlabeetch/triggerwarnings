@@ -60,7 +60,7 @@ export interface Profile {
   enabledCategories: TriggerCategory[];
   /** Alias for enabledCategories - used by newer components */
   triggers?: TriggerCategory[];
-  categoryActions: Record<TriggerCategory, WarningAction>;
+  categoryActions: Partial<Record<TriggerCategory, WarningAction>>;
 
   // Display settings
   display: DisplaySettings;

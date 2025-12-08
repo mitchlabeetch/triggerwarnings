@@ -67,6 +67,11 @@ export class PreWatchManager {
   private profileName = 'Default';
   private userCategories: TriggerCategory[] = [];
 
+  // Player bounds and fullscreen tracking
+  private playerBounds: DOMRect | null = null;
+  private isFullscreen = false;
+  private pauseEnforcementInterval: ReturnType<typeof setInterval> | null = null;
+
   // Callbacks
   private onCompleteCallback: (() => void) | null = null;
   private onSkipCallback: (() => void) | null = null;
@@ -227,11 +232,41 @@ export class PreWatchManager {
     // Create container
     this.container = createContainer('tw-prewatch-container', 'tw-prewatch-root');
 
-    // Inject into DOM (use body for fullscreen overlay)
-    injectContainer(this.container, document.body);
-    logger.debug('Pre-watch container injected');
+    // Inject into PLAYER CONTAINER (not body) for embed-aware positioning
+    const injectionPoint = this.provider.getInjectionPoint() || document.body;
+    injectContainer(this.container, injectionPoint);
 
-    // Mount Svelte component
+    // Get initial player bounds
+    this.playerBounds = injectionPoint.getBoundingClientRect();
+
+    // Check initial fullscreen state
+    this.isFullscreen = !!(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement
+    );
+
+    logger.debug('Pre-watch container injected into player', {
+      bounds: this.playerBounds,
+      isFullscreen: this.isFullscreen,
+    });
+
+    // Add aggressive event blocking to prevent player from receiving events
+    const blockEvent = (e: Event) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+
+    this.container.addEventListener('click', blockEvent, { capture: true });
+    this.container.addEventListener('mousedown', blockEvent, { capture: true });
+    this.container.addEventListener('mouseup', blockEvent, { capture: true });
+    this.container.addEventListener('keydown', blockEvent, { capture: true });
+    this.container.addEventListener('keyup', blockEvent, { capture: true });
+
+    // Start continuous pause enforcement
+    this.startPauseEnforcement();
+
+    // Mount Svelte component with player bounds awareness
     this.component = new PreWatchSafetyScreen({
       target: this.container,
       props: {
@@ -240,6 +275,8 @@ export class PreWatchManager {
         userCategories: this.userCategories,
         profileName: this.profileName,
         minDuration: this.config.minDuration,
+        playerBounds: this.playerBounds,
+        isFullscreen: this.isFullscreen,
         onComplete: () => this.handleComplete(),
         onSkip: () => this.handleSkip(),
         onOpenSettings: () => this.handleOpenSettings(),
@@ -256,6 +293,32 @@ export class PreWatchManager {
   }
 
   /**
+   * Start continuous pause enforcement to prevent video from playing
+   */
+  private startPauseEnforcement(): void {
+    // Immediately pause
+    this.pauseVideo();
+
+    // Check every 100ms to ensure video stays paused
+    this.pauseEnforcementInterval = setInterval(() => {
+      this.pauseVideo();
+    }, 100);
+
+    logger.debug('Pause enforcement started');
+  }
+
+  /**
+   * Stop pause enforcement
+   */
+  private stopPauseEnforcement(): void {
+    if (this.pauseEnforcementInterval) {
+      clearInterval(this.pauseEnforcementInterval);
+      this.pauseEnforcementInterval = null;
+      logger.debug('Pause enforcement stopped');
+    }
+  }
+
+  /**
    * Handle pre-watch screen completion (countdown finished)
    */
   private handleComplete(): void {
@@ -263,6 +326,9 @@ export class PreWatchManager {
     this.hasCompleted = true;
 
     logger.info('Pre-watch screen completed');
+
+    // Stop pause enforcement before resuming playback
+    this.stopPauseEnforcement();
 
     // Resume video playback
     if (this.config.autoPlay) {
@@ -283,6 +349,9 @@ export class PreWatchManager {
     this.hasCompleted = true;
 
     logger.info('Pre-watch screen skipped');
+
+    // Stop pause enforcement before resuming playback
+    this.stopPauseEnforcement();
 
     // Resume video playback
     this.playVideo();
@@ -316,6 +385,9 @@ export class PreWatchManager {
   private cleanup(): void {
     logger.debug('Cleaning up pre-watch screen...');
 
+    // Stop pause enforcement
+    this.stopPauseEnforcement();
+
     if (this.component) {
       this.component.$destroy();
       this.component = null;
@@ -327,6 +399,7 @@ export class PreWatchManager {
     }
 
     this.isShowing = false;
+    this.playerBounds = null;
     logger.info('Pre-watch screen cleanup complete');
   }
 

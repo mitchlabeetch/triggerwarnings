@@ -16,6 +16,15 @@
   export let protectionType: ProtectionType = 'warn';
   export let helperMode: boolean = false;
 
+  // Player bounds awareness (for embed vs fullscreen)
+  export let playerBounds: DOMRect | null = null;
+  export let isFullscreen: boolean = false;
+
+  // Mouse activity visibility settings
+  export let fadeOutDelay: number = 3000;
+  export let buttonColor: string = '#8b5cf6';
+  export let buttonOpacity: number = 0.45;
+
   // Callbacks
   export let onAddTrigger: () => void = () => {};
   export let onIgnoreThisTime: (warningId: string) => void = () => {};
@@ -33,12 +42,22 @@
   let showWarningBanner = false;
   let isProtectionActive = false;
 
+  // Mouse activity visibility state (merged from ActiveIndicator)
+  let isMouseActive = true;
+  let mouseActivityTimeout: ReturnType<typeof setTimeout> | null = null;
+
   // Computed
   $: statusText = getStatusText(status);
   $: statusIcon = getStatusIcon(status);
   $: shouldShowExpanded = isExpanded || isHovering;
   $: expandDirection = getExpandDirection();
   $: categoryInfo = activeWarning ? TRIGGER_CATEGORIES[activeWarning.categoryKey] : null;
+
+  // Visibility: show when mouse active, hovering, or warning banner visible
+  $: isOverlayVisible = isMouseActive || isHovering || showWarningBanner || isDragging;
+
+  // Dynamic opacity based on hover state
+  $: overlayOpacity = isHovering ? 1 : buttonOpacity;
 
   // Watch for active warning changes
   $: if (activeWarning && countdownSeconds > 0) {
@@ -80,16 +99,46 @@
 
   function getExpandDirection(): 'horizontal' | 'vertical' {
     // Expand horizontally if on left/right edge, vertically if top/bottom
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
+    // Use player bounds if available for embed-aware calculations
+    const containerWidth = playerBounds ? playerBounds.width : window.innerWidth;
+    const containerHeight = playerBounds ? playerBounds.height : window.innerHeight;
 
-    const nearLeft = position.x < screenWidth / 3;
-    const nearRight = position.x > (screenWidth * 2) / 3;
+    const nearLeft = position.x < containerWidth / 3;
+    const nearRight = position.x > (containerWidth * 2) / 3;
 
     if (nearLeft || nearRight) {
       return 'horizontal';
     }
     return 'vertical';
+  }
+
+  // Mouse activity handlers (merged from ActiveIndicator)
+  function handleMouseActivity() {
+    isMouseActive = true;
+    resetMouseActivityTimer();
+  }
+
+  function resetMouseActivityTimer() {
+    if (mouseActivityTimeout) {
+      clearTimeout(mouseActivityTimeout);
+    }
+    mouseActivityTimeout = setTimeout(() => {
+      if (!isHovering && !isDragging) {
+        isMouseActive = false;
+      }
+    }, fadeOutDelay);
+  }
+
+  function handleOverlayMouseEnter() {
+    isHovering = true;
+    if (mouseActivityTimeout) {
+      clearTimeout(mouseActivityTimeout);
+    }
+  }
+
+  function handleOverlayMouseLeave() {
+    isHovering = false;
+    resetMouseActivityTimer();
   }
 
   // Drag handlers
@@ -170,84 +219,112 @@
 
   // Lifecycle
   onMount(() => {
+    // Drag event listeners
     window.addEventListener('mousemove', handleDragMove);
     window.addEventListener('mouseup', handleDragEnd);
     window.addEventListener('touchmove', handleDragMove);
     window.addEventListener('touchend', handleDragEnd);
+
+    // Mouse activity listeners for visibility (with capture to intercept before player)
+    window.addEventListener('mousemove', handleMouseActivity, { passive: true, capture: true });
+    window.addEventListener('keydown', handleMouseActivity, { passive: true, capture: true });
+    window.addEventListener('scroll', handleMouseActivity, { passive: true, capture: true });
+
+    // Start initial activity timer
+    handleMouseActivity();
   });
 
   onDestroy(() => {
+    // Clean up drag listeners
     window.removeEventListener('mousemove', handleDragMove);
     window.removeEventListener('mouseup', handleDragEnd);
     window.removeEventListener('touchmove', handleDragMove);
     window.removeEventListener('touchend', handleDragEnd);
+
+    // Clean up mouse activity listeners
+    window.removeEventListener('mousemove', handleMouseActivity);
+    window.removeEventListener('keydown', handleMouseActivity);
+    window.removeEventListener('scroll', handleMouseActivity);
+
+    // Clear any pending timers
+    if (mouseActivityTimeout) {
+      clearTimeout(mouseActivityTimeout);
+    }
   });
 </script>
 
-<!-- Main Overlay Container -->
-<div
-  class="watching-overlay"
-  class:dragging={isDragging}
-  class:expanded={shouldShowExpanded}
-  class:helper-mode={helperMode}
-  style="left: {position.x}px; top: {position.y}px;"
-  bind:this={overlayRef}
-  on:mouseenter={() => (isHovering = true)}
-  on:mouseleave={() => (isHovering = false)}
-  role="region"
-  aria-label="Trigger Warnings Overlay"
->
-  <!-- Compact View (Default) -->
+<!-- Main Overlay Container - Only visible when mouse is active or hovering -->
+{#if isOverlayVisible}
   <div
-    class="compact-view"
-    on:mousedown={handleDragStart}
-    on:touchstart={handleDragStart}
-    role="button"
-    tabindex="0"
-    aria-label="Drag to move, hover to expand"
+    class="watching-overlay"
+    class:dragging={isDragging}
+    class:expanded={shouldShowExpanded}
+    class:helper-mode={helperMode}
+    class:fullscreen={isFullscreen}
+    style="left: {position.x}px; top: {position.y}px; opacity: {overlayOpacity}; --tw-button-color: {buttonColor};"
+    transition:fade={{ duration: 200 }}
+    bind:this={overlayRef}
+    on:mouseenter={handleOverlayMouseEnter}
+    on:mouseleave={handleOverlayMouseLeave}
+    on:click|stopPropagation
+    on:mousedown|stopPropagation
+    role="region"
+    aria-label="Trigger Warnings Overlay"
   >
-    <span class="status-icon">{statusIcon}</span>
-    {#if !shouldShowExpanded}
-      <span
-        class="status-dot"
-        class:protected={status === 'protected'}
-        class:partial={status === 'overall-only'}
-      ></span>
+    <div
+      class="compact-view"
+      on:mousedown|stopPropagation={handleDragStart}
+      on:touchstart|stopPropagation={handleDragStart}
+      on:click|stopPropagation={() => handleAddTrigger()}
+      role="button"
+      tabindex="0"
+      aria-label="Trigger Warnings Active - Click to report, drag to move"
+    >
+      <span class="status-icon">{statusIcon}</span>
+      {#if !shouldShowExpanded}
+        <span
+          class="status-dot"
+          class:protected={status === 'protected'}
+          class:partial={status === 'overall-only'}
+        ></span>
+      {/if}
+    </div>
+
+    <!-- Expanded View -->
+    {#if shouldShowExpanded}
+      <div
+        class="expanded-view"
+        class:horizontal={expandDirection === 'horizontal'}
+        class:vertical={expandDirection === 'vertical'}
+        in:slide={{ duration: 200, easing: quintOut }}
+        out:slide={{ duration: 150 }}
+      >
+        <!-- Status Display with TW Active label -->
+        <div class="status-section">
+          <span class="tw-active-label">TW Active</span>
+          <span class="status-divider">•</span>
+          <span class="status-text">{statusText}</span>
+        </div>
+
+        <!-- Toolbox Actions -->
+        <div class="toolbox">
+          <!-- Add Trigger Button -->
+          <button
+            class="action-btn add-trigger"
+            on:click={handleAddTrigger}
+            title="Add a trigger timestamp"
+          >
+            <span class="btn-icon">+</span>
+          </button>
+
+          {#if helperMode}
+            <span class="helper-badge">Helper</span>
+          {/if}
+        </div>
+      </div>
     {/if}
   </div>
-
-  <!-- Expanded View -->
-  {#if shouldShowExpanded}
-    <div
-      class="expanded-view"
-      class:horizontal={expandDirection === 'horizontal'}
-      class:vertical={expandDirection === 'vertical'}
-      in:slide={{ duration: 200, easing: quintOut }}
-      out:slide={{ duration: 150 }}
-    >
-      <!-- Status Display -->
-      <div class="status-section">
-        <span class="status-text">{statusText}</span>
-      </div>
-
-      <!-- Toolbox Actions -->
-      <div class="toolbox">
-        <!-- Add Trigger Button -->
-        <button
-          class="action-btn add-trigger"
-          on:click={handleAddTrigger}
-          title="Add a trigger timestamp"
-        >
-          <span class="btn-icon">+</span>
-        </button>
-
-        {#if helperMode}
-          <span class="helper-badge">Helper</span>
-        {/if}
-      </div>
-    </div>
-  {/if}
-</div>
+{/if}
 
 <!-- Warning Banner (shows when trigger is approaching) -->
 {#if showWarningBanner && activeWarning && categoryInfo}
@@ -345,16 +422,24 @@
 {/if}
 
 <style>
-  /* Main Overlay */
+  /* Main Overlay - Uses absolute positioning for embed-awareness */
   .watching-overlay {
-    position: fixed;
-    z-index: 2147483646;
+    position: absolute !important;
+    z-index: 2147483647 !important;
     display: flex;
     align-items: flex-start;
     gap: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    pointer-events: auto;
-    transition: transform 0.1s ease;
+    pointer-events: auto !important;
+    transition:
+      transform 0.2s ease,
+      opacity 0.3s ease;
+    user-select: none;
+  }
+
+  /* Fullscreen mode - use fixed positioning */
+  .watching-overlay.fullscreen {
+    position: fixed !important;
   }
 
   .watching-overlay.dragging {
@@ -444,6 +529,19 @@
     font-weight: 500;
     color: rgba(255, 255, 255, 0.9);
     white-space: nowrap;
+  }
+
+  .tw-active-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tw-button-color, #8b5cf6);
+    text-shadow: 0 0 8px var(--tw-button-color, #8b5cf6);
+    white-space: nowrap;
+  }
+
+  .status-divider {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
   }
 
   .toolbox {

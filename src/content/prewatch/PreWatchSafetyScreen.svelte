@@ -20,6 +20,10 @@
   export let onSkip: () => void = () => {};
   export let onOpenSettings: () => void = () => {};
 
+  // Player bounds awareness (for embed vs fullscreen)
+  export let playerBounds: DOMRect | null = null;
+  export let isFullscreen: boolean = false;
+
   const dispatch = createEventDispatcher();
 
   // State
@@ -349,18 +353,20 @@
 {/if}
 
 <style>
+  /* Use absolute positioning for embed-aware coverage */
   .prewatch-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2147483647;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 2147483647 !important;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     color: white;
+    pointer-events: auto !important;
   }
 
   .backdrop {

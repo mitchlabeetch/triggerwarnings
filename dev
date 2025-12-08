@@ -1,0 +1,72 @@
+#!/bin/bash
+# Test video launcher - opens Chrome with a test video
+
+echo "🎬 Trigger Warnings Extension - Test Videos"
+echo "============================================"
+echo ""
+echo "Select a video to test:"
+echo ""
+echo "  1. Never Gonna Give You Up    (NO triggers, safe content)"
+echo "  2. Shape of You - Ed Sheeran  (Overall ONLY - mild suggestive)"
+echo "  3. Hello - Adele              (Timestamps ONLY - emotional)"
+echo "  4. Harder Better Faster       (BOTH - flashing lights)"
+echo "  5. Dark Knight Rises Trailer  (BOTH - action/violence)"
+echo "  6. Inside Out Scenes          (BOTH - emotional/death)"
+echo "  7. Gangnam Style              (Overall ONLY - mild)"
+echo "  8. Tom Scott Lab              (BOTH - medical/claustrophobia)"
+echo ""
+echo "  0. Exit"
+echo ""
+
+read -p "Enter number (1-8): " choice
+
+case $choice in
+  1)
+    url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    echo "Opening: Never Gonna Give You Up (no triggers)"
+    ;;
+  2)
+    url="https://www.youtube.com/watch?v=JGwWNGJdvx8"
+    echo "Opening: Shape of You (overall only)"
+    ;;
+  3)
+    url="https://www.youtube.com/watch?v=YQHsXMglC9A"
+    echo "Opening: Hello - Adele (timestamps only)"
+    ;;
+  4)
+    url="https://www.youtube.com/watch?v=n1WpP7iowLc"
+    echo "Opening: Harder Better Faster (both triggers)"
+    ;;
+  5)
+    url="https://www.youtube.com/watch?v=sGbxmsDFVnE"
+    echo "Opening: Dark Knight Rises Trailer (high severity)"
+    ;;
+  6)
+    url="https://www.youtube.com/watch?v=WNeLUngb-Xg"
+    echo "Opening: Inside Out Scenes (emotional)"
+    ;;
+  7)
+    url="https://www.youtube.com/watch?v=ZbZSe6N_BXs"
+    echo "Opening: Gangnam Style (overall only)"
+    ;;
+  8)
+    url="https://www.youtube.com/watch?v=SqcY0GlETPk"
+    echo "Opening: Tom Scott Lab (medical/claustrophobia)"
+    ;;
+  0)
+    echo "Exiting..."
+    exit 0
+    ;;
+  *)
+    echo "Invalid choice. Please enter 1-8."
+    exit 1
+    ;;
+esac
+
+echo ""
+echo "🚀 Launching Chrome..."
+
+# Open Chrome specifically on macOS
+open -a "Google Chrome" "$url"
+
+echo "✅ Done! Make sure the extension is loaded in Chrome."

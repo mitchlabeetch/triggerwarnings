@@ -15,7 +15,7 @@ import browser from 'webextension-polyfill';
 import { ProviderFactory } from './providers/ProviderFactory';
 import { WarningManager } from '@core/warning-system/WarningManager';
 import { BannerManager } from './banner/BannerManager';
-import { ActiveIndicatorManager } from './indicator/ActiveIndicatorManager';
+// ActiveIndicatorManager has been merged into WatchingOverlay
 import { PreWatchManager } from './prewatch/PreWatchManager';
 import { WatchingOverlayManager } from './watching/WatchingOverlayManager';
 import { triggerDatabaseService } from '@database/services/TriggerDatabaseService';
@@ -46,7 +46,7 @@ class TriggerWarningsContent {
   private provider: IStreamingProvider | null = null;
   private warningManager: WarningManager | null = null;
   private bannerManager: BannerManager | null = null;
-  private indicatorManager: ActiveIndicatorManager | null = null;
+  // indicatorManager removed - merged into WatchingOverlay
   private preWatchManager: PreWatchManager | null = null;
   private watchingOverlayManager: WatchingOverlayManager | null = null;
   private initialized = false;
@@ -300,10 +300,8 @@ class TriggerWarningsContent {
         }
       });
 
-      // Set up indicator callbacks
-      this.indicatorManager?.onQuickAdd(() => {
-        this.handleQuickAddTrigger();
-      });
+      // Note: Quick add is now handled via WatchingOverlay
+      // No separate indicator callback needed
 
       this.initialized = true;
       logger.info('Legacy workflow initialized successfully');
@@ -326,19 +324,21 @@ class TriggerWarningsContent {
     this.bannerManager = new BannerManager(this.provider);
     await this.bannerManager.initialize();
 
-    // Initialize active indicator
-    this.indicatorManager = new ActiveIndicatorManager(this.provider);
-    await this.indicatorManager.initialize();
+    // Note: ActiveIndicatorManager has been merged into WatchingOverlay
+    // No separate indicator initialization needed
 
-    logger.debug('Legacy banner and indicator initialized');
+    logger.debug('Legacy banner initialized');
   }
 
   /**
    * Update indicator with current active warnings
    */
   private updateIndicatorWarnings(): void {
+    // Note: This functionality is now handled by WatchingOverlay
+    // Active warnings are managed through the watching overlay manager
     const warnings = Array.from(this.activeWarningsMap.values());
-    this.indicatorManager?.updateActiveWarnings(warnings);
+    // Warnings can be passed to watchingOverlayManager if needed
+    logger.debug('Active warnings updated:', warnings.length);
   }
 
   /**
@@ -442,10 +442,7 @@ class TriggerWarningsContent {
       this.bannerManager = null;
     }
 
-    if (this.indicatorManager) {
-      this.indicatorManager.dispose();
-      this.indicatorManager = null;
-    }
+    // Note: indicatorManager removed - merged into WatchingOverlay
 
     if (this.provider) {
       this.provider.dispose();
