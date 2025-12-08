@@ -343,10 +343,49 @@
 </div>
 
 <style>
+  /* CSS Variables for theming */
+  :root {
+    --options-bg: #f5f7fa;
+    --card-bg: white;
+    --card-enabled-bg: #f8f9ff;
+    --text-primary: #333;
+    --text-secondary: #666;
+    --text-muted: #888;
+    --border-color: #ddd;
+    --input-bg: white;
+    --severity-high-bg: #fee2e2;
+    --severity-high-color: #991b1b;
+    --severity-medium-bg: #fef3c7;
+    --severity-medium-color: #92400e;
+    --severity-low-bg: #dcfce7;
+    --severity-low-color: #166534;
+  }
+
+  /* Dark mode */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --options-bg: #1a1a2e;
+      --card-bg: #16213e;
+      --card-enabled-bg: #1f3460;
+      --text-primary: #eaeaea;
+      --text-secondary: #a0a0a0;
+      --text-muted: #707070;
+      --border-color: #2a2a3e;
+      --input-bg: #16213e;
+      --severity-high-bg: rgba(239, 68, 68, 0.2);
+      --severity-high-color: #fca5a5;
+      --severity-medium-bg: rgba(245, 158, 11, 0.2);
+      --severity-medium-color: #fcd34d;
+      --severity-low-bg: rgba(34, 197, 94, 0.2);
+      --severity-low-color: #86efac;
+    }
+  }
+
   .options {
     min-height: 100vh;
-    background: #f5f7fa;
+    background: var(--options-bg);
     font-family: system-ui, sans-serif;
+    color: var(--text-primary);
   }
   .options-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -369,7 +408,7 @@
     display: flex;
     gap: 20px;
     margin: 30px 0;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border-color);
   }
   .tab {
     background: none;
@@ -377,7 +416,7 @@
     padding: 10px 0;
     cursor: pointer;
     font-size: 16px;
-    color: #666;
+    color: var(--text-secondary);
     border-bottom: 2px solid transparent;
   }
   .tab.active {
@@ -395,22 +434,26 @@
     align-items: center;
     gap: 15px;
     padding: 15px;
-    background: white;
-    border: 1px solid #ddd;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     cursor: pointer;
     text-align: left;
+    transition: all 0.2s ease;
+  }
+  .category-card:hover {
+    border-color: var(--text-muted);
   }
   .category-card.enabled {
     border-color: #667eea;
-    background: #f8f9ff;
+    background: var(--card-enabled-bg);
   }
   .category-icon {
     font-size: 24px;
   }
   .category-name {
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
   }
   .category-toggle {
     font-weight: bold;
@@ -423,16 +466,17 @@
   }
   .theme-btn {
     padding: 10px 20px;
-    background: white;
-    border: 1px solid #ddd;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     cursor: pointer;
+    color: var(--text-primary);
     border-radius: 6px;
   }
   .loading,
   .error {
     padding: 40px;
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
   }
   .setting-group {
     margin-bottom: 20px;
@@ -456,16 +500,16 @@
     gap: 8px;
   }
   .severity-high {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--severity-high-bg);
+    color: var(--severity-high-color);
   }
   .severity-medium {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--severity-medium-bg);
+    color: var(--severity-medium-color);
   }
   .severity-low {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--severity-low-bg);
+    color: var(--severity-low-color);
   }
   /* Search box */
   .search-box {
@@ -475,10 +519,15 @@
   .search-input {
     width: 100%;
     padding: 12px 40px 12px 16px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     font-size: 14px;
     box-sizing: border-box;
+    background: var(--input-bg);
+    color: var(--text-primary);
+  }
+  .search-input::placeholder {
+    color: var(--text-muted);
   }
   .search-input:focus {
     outline: none;
@@ -493,13 +542,13 @@
     background: none;
     border: none;
     font-size: 16px;
-    color: #888;
+    color: var(--text-muted);
     cursor: pointer;
   }
   .no-results {
     padding: 40px;
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
     font-style: italic;
   }
 </style>

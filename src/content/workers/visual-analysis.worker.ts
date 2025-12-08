@@ -4,7 +4,7 @@
  * This script runs in a dedicated Web Worker to offload all heavy visual
  * analysis from the main thread, preventing UI blocking and ensuring a smooth
  * user experience. It uses TensorFlow.js with the WebGPU backend for
-* hardware-accelerated, local ML model inference.
+ * hardware-accelerated, local ML model inference.
  *
  * **ARCHITECTURE:**
  * - Environment: Dedicated Web Worker
@@ -27,6 +27,12 @@ import type { TriggerCategory } from '@shared/types/Warning.types';
 import { Logger } from '@shared/utils/logger';
 import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-backend-webgpu';
+
+// Type declaration for Web Worker global scope
+interface DedicatedWorkerGlobalScope {
+  postMessage(message: unknown): void;
+  onmessage: ((event: MessageEvent) => void) | null;
+}
 
 // self is the global scope in a Web Worker
 declare const self: DedicatedWorkerGlobalScope;
@@ -74,18 +80,21 @@ class VisualCNN {
       logger.info('[VisualCNN] WebGPU backend ready.');
 
       logger.info('[VisualCNN] Loading Quantized MobileNetV2 model...');
-      const modelUrl = 'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1';
+      const modelUrl =
+        'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1';
       this.model = await tf.loadGraphModel(modelUrl, { fromTFHub: true });
 
       this.modelLoaded = true;
       this.stats.modelLoadSuccess = true;
       this.stats.totalLoadTimeMs = performance.now() - startTime;
-      logger.info(`[VisualCNN] Model loaded successfully in ${this.stats.totalLoadTimeMs.toFixed(0)}ms`);
+      logger.info(
+        `[VisualCNN] Model loaded successfully in ${this.stats.totalLoadTimeMs.toFixed(0)}ms`
+      );
       logger.warn(
         `[VisualCNN] IMPORTANT: The loaded MobileNetV2 model is a placeholder for ` +
-        `architectural demonstration. It is trained on ImageNet and is NOT capable of ` +
-        `detecting the required trigger warnings. A custom-trained model is required ` +
-        `for this feature to be functional.`
+          `architectural demonstration. It is trained on ImageNet and is NOT capable of ` +
+          `detecting the required trigger warnings. A custom-trained model is required ` +
+          `for this feature to be functional.`
       );
       return true;
     } catch (error) {
@@ -103,16 +112,23 @@ class VisualCNN {
     const startTime = performance.now();
     this.stats.totalInferences++;
 
-    await tf.tidy(async () => {
+    // Note: tf.tidy doesn't support async functions, so we manage tensors manually
+    try {
       const currentFrame = tf.browser.fromPixels(imageBitmap);
 
       if (this.previousFrame) {
-        const diff = tf.abs(currentFrame.toFloat().div(tf.scalar(255)).sub(this.previousFrame.toFloat().div(tf.scalar(255))));
+        const diff = tf.abs(
+          currentFrame
+            .toFloat()
+            .div(tf.scalar(255))
+            .sub(this.previousFrame.toFloat().div(tf.scalar(255)))
+        );
         const sceneChange = (await tf.mean(diff).data())[0] > this.SCENE_CHANGE_THRESHOLD;
+        diff.dispose();
 
         if (sceneChange) {
           this.stats.sceneChangesDetected++;
-          const result = await this.runClassification(currentFrame);
+          const result = await this.runClassification(currentFrame as tf.Tensor3D);
           if (result) {
             result.processingTimeMs = performance.now() - startTime;
             // Post result back to the main thread
@@ -121,7 +137,7 @@ class VisualCNN {
         }
       } else {
         // Always classify the first frame
-        const result = await this.runClassification(currentFrame);
+        const result = await this.runClassification(currentFrame as tf.Tensor3D);
         if (result) {
           result.processingTimeMs = performance.now() - startTime;
           self.postMessage({ type: 'result', payload: result });
@@ -131,12 +147,14 @@ class VisualCNN {
       this.previousFrame?.dispose();
       this.previousFrame = tf.clone(currentFrame);
       currentFrame.dispose();
-    });
+    } catch (error) {
+      logger.error('[VisualCNN] Classification error:', error);
+    }
   }
 
   private async runClassification(frame: tf.Tensor3D): Promise<CNNInferenceResult | null> {
     // Normalize the frame to the range [-1, 1] and resize to the model's expected input size.
-    const normalizedFrame = frame.toFloat().div(tf.scalar(127.5)).sub(tf.scalar(1));
+    const normalizedFrame = frame.toFloat().div(tf.scalar(127.5)).sub(tf.scalar(1)) as tf.Tensor3D;
     const resizedFrame = tf.image.resizeBilinear(normalizedFrame, [224, 224]);
     const reshapedFrame = resizedFrame.reshape([1, 224, 224, 3]);
 
@@ -147,9 +165,9 @@ class VisualCNN {
     // Since we don't have the class names for this model, we'll use placeholder names.
     const confidences: CategoryConfidences = {};
     predictions.forEach((value, index) => {
-        // These are placeholder class names. A real model would have meaningful labels.
-        const className = `class_${index}`;
-        confidences[className] = value * 100;
+      // These are placeholder class names. A real model would have meaningful labels.
+      const className = `class_${index}`;
+      confidences[className] = value * 100;
     });
 
     // As an example, we'll map a few placeholder classes to our trigger categories.
@@ -164,7 +182,7 @@ class VisualCNN {
       confidences,
       topCategories,
       processingTimeMs: 0,
-      modelVersion: 'MobileNetV2'
+      modelVersion: 'MobileNetV2',
     };
   }
 
@@ -176,16 +194,16 @@ class VisualCNN {
     // A real implementation would use a custom-trained model where the output
     // classes directly correspond to the TriggerCategory enums.
     const imagenetToTriggerCategory: { [key: string]: TriggerCategory } = {
-        'redbone': 'blood',
-        'military uniform': 'violence',
-        'syringe': 'medical_procedures',
+      redbone: 'blood',
+      'military uniform': 'violence',
+      syringe: 'medical_procedures',
     };
 
     return Object.entries(confidences)
       .filter(([category]) => imagenetToTriggerCategory[category])
       .map(([category, confidence]) => ({
         category: imagenetToTriggerCategory[category],
-        confidence
+        confidence,
       }))
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, k);
