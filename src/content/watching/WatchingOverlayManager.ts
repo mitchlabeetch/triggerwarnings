@@ -462,7 +462,7 @@ export class WatchingOverlayManager {
 
     this.pendingWarnings.delete(this.activeWarning.id);
     this.activeWarning = null;
-    this.countdownSeconds = 0;
+    this.countdownSeconds = 0; // Bug 4 Fix: ensure reset
     this.removeProtection();
     this.updateOverlay();
   }
@@ -584,6 +584,10 @@ export class WatchingOverlayManager {
     if (video && !video.paused) {
       video.pause();
     }
+
+    // UI 5: Feedback Toast (Handled inside WatchingOverlay component if extended, or here)
+    // For now we rely on the button animation, but we could show a toast.
+    // WatchingOverlay.svelte should probably handle the toast display if triggered.
 
     this.callbacks.onAddTrigger?.();
   }
