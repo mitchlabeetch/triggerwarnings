@@ -46,6 +46,9 @@
   let toastMessage = '';
   let toastTimeout: number | null = null;
 
+  // New Feature: Compact/Minimized Mode
+  let isMinimized = false;
+
   // Mouse activity visibility state
   let isMouseActive = true;
   let mouseActivityTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -53,7 +56,7 @@
   // Computed
   $: statusText = getStatusText(status);
   $: statusIcon = getStatusIcon(status);
-  $: shouldShowExpanded = isExpanded || isHovering;
+  $: shouldShowExpanded = !isMinimized && (isExpanded || isHovering);
   $: categoryInfo = activeWarning ? TRIGGER_CATEGORIES[activeWarning.categoryKey] : null;
 
   // Visibility: show when mouse active, hovering, or warning banner visible
@@ -69,6 +72,9 @@
     showWarningBanner = false;
     isProtectionActive = false;
   }
+
+  // Pulse animation state
+  $: shouldPulse = activeWarning && countdownSeconds < 10 && countdownSeconds > 0;
 
   function getStatusText(s: WatchingStatus): string {
     switch (s) {
@@ -153,6 +159,9 @@
   function handleDragStart(e: MouseEvent | TouchEvent) {
     if (!overlayRef) return;
 
+    // Only allow drag if left click (if mouse)
+    if (e instanceof MouseEvent && e.button !== 0) return;
+
     isDragging = true;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -175,7 +184,7 @@
     const newY = clientY - dragStart.y;
 
     // Constrain to viewport
-    const maxX = window.innerWidth - 60;
+    const maxX = window.innerWidth - (isMinimized ? 40 : 120);
     const maxY = window.innerHeight - 40;
 
     position = {
@@ -190,6 +199,11 @@
       onPositionChange(position);
       dispatch('positionChange', position);
     }
+  }
+
+  // Toggle Minimized Mode
+  function toggleMinimize() {
+    isMinimized = !isMinimized;
   }
 
   // Action handlers
@@ -277,8 +291,10 @@
     class="watching-overlay"
     class:dragging={isDragging}
     class:expanded={shouldShowExpanded}
+    class:minimized={isMinimized}
     class:helper-mode={helperMode}
     class:fullscreen={isFullscreen}
+    class:pulsing={shouldPulse}
     style="left: {position.x}px; top: {position.y}px; opacity: {overlayOpacity}; --tw-button-color: {buttonColor};"
     transition:fade={{ duration: 250 }}
     bind:this={overlayRef}
@@ -286,17 +302,17 @@
     on:mouseleave={handleOverlayMouseLeave}
     on:click|stopPropagation
     on:mousedown|stopPropagation
+    on:dblclick|stopPropagation={toggleMinimize}
     role="region"
     aria-label="Trigger Warnings Overlay"
   >
-    <!-- Drag Handle (only on hover) UI 10: Always visible on hover for better affordance -->
-    {#if shouldShowExpanded}
+    <!-- Drag Handle (always visible if not minimized) -->
+    {#if !isMinimized}
       <div
         class="drag-handle"
         on:mousedown|stopPropagation={handleDragStart}
         on:touchstart|stopPropagation={handleDragStart}
         title="Drag to move"
-        in:fade={{ duration: 150, delay: 100 }}
       >
         <!-- Improved drag icon (6 dots grid) -->
         <svg viewBox="0 0 12 12" class="drag-icon">
@@ -310,7 +326,7 @@
       </div>
     {/if}
 
-    <!-- Compact State: Status Dot + TW Label -->
+    <!-- Island Core -->
     <div
       class="island-core"
       on:mousedown|stopPropagation={handleDragStart}
@@ -318,6 +334,7 @@
       role="button"
       tabindex="0"
       aria-label="Trigger Warnings Active"
+      title={isMinimized ? "Double-click to expand" : "Double-click to minimize"}
     >
       <span
         class="status-dot"
@@ -325,7 +342,9 @@
         class:partial={status === 'overall-only'}
         class:unprotected={status === 'unprotected'}
       ></span>
-      <span class="tw-label">TW</span>
+      {#if !isMinimized}
+        <span class="tw-label">TW</span>
+      {/if}
     </div>
 
     <!-- Expanded Toolbox (liquid expand on hover) -->
@@ -495,7 +514,15 @@
       width 0.4s cubic-bezier(0.23, 1, 0.32, 1),
       opacity 0.3s ease,
       transform 0.2s ease,
-      box-shadow 0.3s ease;
+      box-shadow 0.3s ease,
+      border-radius 0.3s ease;
+  }
+
+  .watching-overlay.minimized {
+    border-radius: 50%;
+    width: 28px;
+    justify-content: center;
+    padding: 0;
   }
 
   .watching-overlay.fullscreen {
@@ -507,6 +534,18 @@
       0 12px 40px rgba(0, 0, 0, 0.45),
       inset 0 1px 0 rgba(255, 255, 255, 0.12),
       0 0 20px rgba(139, 92, 246, 0.15);
+  }
+
+  /* Pulse Animation */
+  .watching-overlay.pulsing {
+     animation: urgent-pulse 1s infinite;
+     border-color: rgba(239, 68, 68, 0.5);
+  }
+
+  @keyframes urgent-pulse {
+     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+     70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+     100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
   }
 
   .watching-overlay.dragging {
@@ -547,6 +586,12 @@
     padding: 0 10px;
     height: 100%;
     cursor: grab;
+  }
+
+  .minimized .island-core {
+      padding: 0;
+      justify-content: center;
+      width: 100%;
   }
 
   .status-dot {
@@ -655,6 +700,12 @@
 
   .helper-mode .island-core {
     border-left: 2px solid rgba(139, 92, 246, 0.5);
+  }
+
+  .minimized.helper-mode .island-core {
+      border-left: none;
+      border: 2px solid rgba(139, 92, 246, 0.5);
+      border-radius: 50%;
   }
 
   /* UI 5: Mini Toast */
