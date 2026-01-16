@@ -618,6 +618,9 @@ export class WatchingOverlayManager {
       });
 
       // Show success feedback (TODO: Add toast or notification)
+      if (this.component) {
+        (this.component as any).showToastMessage('Trigger submitted successfully');
+      }
       logger.info('Trigger submitted successfully');
 
     } catch (error) {
