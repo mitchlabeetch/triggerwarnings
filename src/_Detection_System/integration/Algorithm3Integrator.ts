@@ -781,7 +781,7 @@ export class Algorithm3Integrator {
       category: detection.category,
       timeOfDay: this.getTimeOfDay(),
       userSensitivity: rlState.userSensitivity,
-      recentAccuracy: 0.75,  // TODO: Track actual accuracy
+      recentAccuracy: this.adaptiveThresholdLearner.getRecentAccuracy(detection.category),
       modalityCount: rlState.modalityCount,
       complexityScore: (categoryFeatures?.confidence || 50) / 100
     };

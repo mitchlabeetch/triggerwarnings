@@ -168,6 +168,10 @@ export class AdaptiveThresholdLearner {
   // Recent adjustments (for convergence detection)
   private recentAdjustments: Map<TriggerCategory, number[]> = new Map();
 
+  // Accuracy tracking (Innovation #37)
+  private readonly ACCURACY_WINDOW_SIZE = 20;
+  private recentAccuracyWindow: Map<TriggerCategory, boolean[]> = new Map();
+
   // Statistics
   private stats = {
     totalFeedback: 0,
@@ -233,6 +237,14 @@ export class AdaptiveThresholdLearner {
       return null;
     }
 
+    // Update accuracy tracking
+    const isAccurate = normalizedFeedback.feedbackType === 'confirmed_correct' || normalizedFeedback.feedbackType === 'watched_through';
+    const isInaccurate = normalizedFeedback.feedbackType === 'dismissed' || normalizedFeedback.feedbackType === 'reported_missed';
+
+    if (isAccurate || isInaccurate) {
+      this.updateAccuracyWindow(normalizedFeedback.category, isAccurate);
+    }
+
     // Calculate threshold adjustment based on feedback type
     const adjustment = this.calculateAdjustment(normalizedFeedback, thresholdData);
     if (adjustment === 0) {
@@ -283,6 +295,31 @@ export class AdaptiveThresholdLearner {
     );
 
     return result;
+  }
+
+  /**
+   * Update accuracy window with new feedback
+   */
+  private updateAccuracyWindow(category: TriggerCategory, isAccurate: boolean): void {
+    if (!this.recentAccuracyWindow.has(category)) {
+      this.recentAccuracyWindow.set(category, []);
+    }
+    const window = this.recentAccuracyWindow.get(category)!;
+    window.push(isAccurate);
+    if (window.length > this.ACCURACY_WINDOW_SIZE) {
+      window.shift();
+    }
+  }
+
+  /**
+   * Get recent accuracy for category (Innovation #37)
+   */
+  getRecentAccuracy(category: TriggerCategory): number {
+    const window = this.recentAccuracyWindow.get(category);
+    if (!window || window.length === 0) return 0.75; // Default
+
+    const accurateCount = window.filter(v => v).length;
+    return accurateCount / window.length;
   }
 
   /**
