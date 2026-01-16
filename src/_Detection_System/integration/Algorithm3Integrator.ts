@@ -741,7 +741,8 @@ export class Algorithm3Integrator {
       }
     } else {
       // Initialize consensus for this new detection
-      bayesianConsensusSystem.initializeConsensus(contentId, detection.category, finalConfidence);
+      // Ensure we await initialization if necessary
+      await bayesianConsensusSystem.initializeConsensus(contentId, detection.category, finalConfidence);
     }
 
     // STEP 7: Apply Phase 10 - Reinforcement Learning & Adaptive Optimization
@@ -1118,7 +1119,7 @@ export class Algorithm3Integrator {
   /**
    * Process user feedback for adaptive threshold learning (Phase 4 & Phase 10)
    */
-  processFeedback(feedback: UserFeedback): void {
+  async processFeedback(feedback: UserFeedback): Promise<void> {
     const action = (feedback as any).action;
     const wasHelpful = action === 'confirmed-helpful';
     const originalConfidence = (feedback as any).confidence || 0;
@@ -1225,7 +1226,7 @@ export class Algorithm3Integrator {
         contentId = 'content-session-' + Math.floor(Date.now() / 60000);
     }
 
-    bayesianConsensusSystem.processVote({
+    await bayesianConsensusSystem.processVote({
       userId: this.userProfile.userId || 'anonymous',
       category: feedback.category,
       contentId: contentId,
