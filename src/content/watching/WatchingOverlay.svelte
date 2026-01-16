@@ -214,7 +214,7 @@
     showToastMessage('Timestamp saved! Open popup to finish.');
   }
 
-  function showToastMessage(msg: string) {
+  export function showToastMessage(msg: string) {
     toastMessage = msg;
     showToast = true;
     if (toastTimeout) clearTimeout(toastTimeout);
