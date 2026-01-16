@@ -1,103 +1,128 @@
 
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import * as tf from '@tensorflow/tfjs';
 import { VisualCNN } from './VisualCNN';
 
-// Mock classes for Canvas API
-class MockCanvasRenderingContext2D {
-  canvas: any;
-  constructor(canvas: any) {
-    this.canvas = canvas;
-  }
-  putImageData(imageData: ImageData, dx: number, dy: number) {
-    // Mock implementation
-  }
-  drawImage(image: any, dx: number, dy: number, dw: number, dh: number) {
-    // Mock implementation
-  }
-  getImageData(sx: number, sy: number, sw: number, sh: number) {
-    // Return a mock ImageData with the requested size
-    // We can't use new ImageData() if it's not available, so return a simple object
-    // compatible with ImageData
+// Mock TensorFlow.js
+vi.mock('@tensorflow/tfjs', async () => {
     return {
-      width: sw,
-      height: sh,
-      data: new Uint8ClampedArray(sw * sh * 4),
-      colorSpace: 'srgb'
-    } as unknown as ImageData;
-  }
-}
-
-class MockOffscreenCanvas {
-  width: number;
-  height: number;
-  constructor(width: number, height: number) {
-    this.width = width;
-    this.height = height;
-  }
-  getContext(type: string) {
-    if (type === '2d') {
-      return new MockCanvasRenderingContext2D(this);
-    }
-    return null;
-  }
-}
-
-// Global setup for mocks
-beforeAll(() => {
-  // Mock ImageData if not present (Node environment)
-  if (typeof ImageData === 'undefined') {
-    global.ImageData = class ImageData {
-      width: number;
-      height: number;
-      data: Uint8ClampedArray;
-      colorSpace: PredefinedColorSpace = 'srgb';
-      constructor(sw: number, sh: number) {
-        this.width = sw;
-        this.height = sh;
-        this.data = new Uint8ClampedArray(sw * sh * 4);
-      }
-    } as any;
-  }
-
-  // Mock OffscreenCanvas
-  global.OffscreenCanvas = MockOffscreenCanvas as any;
-
-  // Mock document if needed (for fallback path testing, though we prefer OffscreenCanvas if available)
-  if (typeof document === 'undefined') {
-      // Minimal document mock
-      (global as any).document = {
-          createElement: (tag: string) => {
-              if (tag === 'canvas') {
-                  return new MockOffscreenCanvas(0, 0); // Reuse logic
-              }
-              return {};
-          }
-      };
-  }
+        ready: vi.fn().mockResolvedValue(undefined),
+        setBackend: vi.fn().mockResolvedValue(undefined),
+        loadGraphModel: vi.fn(),
+        getBackend: vi.fn().mockReturnValue('test-backend'),
+        browser: {
+            fromPixels: vi.fn(),
+        },
+        image: {
+            resizeBilinear: vi.fn(),
+        },
+        tidy: vi.fn((fn) => fn()),
+        zeros: vi.fn(() => ({ dispose: vi.fn() })),
+    };
 });
 
-afterAll(() => {
-    // Cleanup if necessary
-});
+// Mock Backend WebGPU import (it's a side-effect import)
+vi.mock('@tensorflow/tfjs-backend-webgpu', () => ({}));
 
 describe('VisualCNN', () => {
+  let visualCNN: VisualCNN;
+  let mockModel: any;
+  let mockTensor: any;
+
+  beforeAll(() => {
+    // Mock global ImageData if needed
+    if (typeof ImageData === 'undefined') {
+        global.ImageData = class {
+            width: number;
+            height: number;
+            data: Uint8ClampedArray;
+            constructor(w: number, h: number) {
+                this.width = w;
+                this.height = h;
+                this.data = new Uint8ClampedArray(w * h * 4);
+            }
+        } as any;
+    }
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Setup Mock Tensor
+    mockTensor = {
+        toFloat: vi.fn().mockReturnThis(),
+        div: vi.fn().mockReturnThis(),
+        sub: vi.fn().mockReturnThis(),
+        expandDims: vi.fn().mockReturnThis(),
+        dispose: vi.fn(),
+        data: vi.fn().mockResolvedValue(new Float32Array(28).fill(0.5)), // 50% confidence
+    };
+
+    // Setup Mock Model
+    mockModel = {
+        predict: vi.fn().mockReturnValue(mockTensor),
+        dispose: vi.fn(),
+    };
+
+    // Setup TF mocks
+    (tf.loadGraphModel as any).mockResolvedValue(mockModel);
+    (tf.browser.fromPixels as any).mockReturnValue(mockTensor);
+    (tf.image.resizeBilinear as any).mockReturnValue(mockTensor);
+
+    // Re-instantiate to get fresh state if needed, but VisualCNN is a class we export as singleton too.
+    // We'll create a new instance for testing to avoid singleton state issues.
+    visualCNN = new VisualCNN();
+  });
+
   it('should be defined', () => {
-    const visualCNN = new VisualCNN();
     expect(visualCNN).toBeDefined();
   });
 
-  it('should resize image correctly using mock canvas', async () => {
-    const visualCNN = new VisualCNN();
+  it('should load model correctly', async () => {
+    const success = await visualCNN.loadModel('fake-url');
+
+    expect(tf.ready).toHaveBeenCalled();
+    expect(tf.loadGraphModel).toHaveBeenCalledWith('fake-url');
+    expect(success).toBe(true);
+    expect(visualCNN.isLoaded()).toBe(true);
+  });
+
+  it('should fallback to default URL if none provided', async () => {
+    await visualCNN.loadModel();
+    expect(tf.loadGraphModel).toHaveBeenCalledWith(expect.stringContaining('https://cdn.triggerwarnings.ai/models/visual-v1.tfjs'));
+  });
+
+  it('should handle load failure', async () => {
+    (tf.loadGraphModel as any).mockRejectedValue(new Error('Load failed'));
+
+    const success = await visualCNN.loadModel();
+    expect(success).toBe(false);
+    expect(visualCNN.isLoaded()).toBe(false);
+  });
+
+  it('should classify image correctly', async () => {
     await visualCNN.loadModel();
 
-    const width = 100;
-    const height = 100;
-    const imageData = new ImageData(width, height);
+    const imageData = new ImageData(100, 100);
+    const result = await visualCNN.classify(imageData);
 
-    // Bypass private access
-    const preprocessed = (visualCNN as any).preprocessFrame(imageData);
+    expect(tf.browser.fromPixels).toHaveBeenCalledWith(imageData);
+    expect(tf.image.resizeBilinear).toHaveBeenCalled();
+    expect(mockModel.predict).toHaveBeenCalled();
+    expect(result).toBeDefined();
+    expect(result.confidences['blood']).toBeCloseTo(50); // 0.5 * 100
+  });
 
-    // 224 * 224 * 3 float values
-    expect(preprocessed.length).toBe(224 * 224 * 3);
+  it('should throw if classifying before load', async () => {
+    const imageData = new ImageData(100, 100);
+    await expect(visualCNN.classify(imageData)).rejects.toThrow('Model not loaded');
+  });
+
+  it('should dispose model correctly', async () => {
+    await visualCNN.loadModel();
+    visualCNN.dispose();
+
+    expect(mockModel.dispose).toHaveBeenCalled();
+    expect(visualCNN.isLoaded()).toBe(false);
   });
 });
