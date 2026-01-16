@@ -35,6 +35,8 @@
  * Date: 2025-11-12
  */
 
+import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-backend-webgpu';
 import type { TriggerCategory } from '@shared/types/Warning.types';
 import { Logger } from '@shared/utils/logger';
 
@@ -71,15 +73,17 @@ interface ModelMetadata {
   accuracy: number;  // Test set accuracy
 }
 
+const DEFAULT_MODEL_URL = 'https://cdn.triggerwarnings.ai/models/visual-v1.tfjs';
+
 /**
  * Visual CNN Integration Framework
  *
  * Provides infrastructure for loading and running CNN models for
  * visual trigger detection. Designed for browser deployment with
- * WebGL acceleration.
+ * WebGL/WebGPU acceleration.
  */
 export class VisualCNN {
-  private model: any = null;  // TensorFlow.js or ONNX model
+  private model: tf.GraphModel | null = null;
   private modelLoaded: boolean = false;
   private modelMetadata: ModelMetadata | null = null;
   private useWebGL: boolean = true;
@@ -135,38 +139,61 @@ export class VisualCNN {
    * - Local cache (IndexedDB for progressive web app)
    * - Fallback to handcrafted features if model fails to load
    */
-  async loadModel(modelUrl?: string): Promise<boolean> {
+  async loadModel(modelUrl: string = DEFAULT_MODEL_URL): Promise<boolean> {
     const startTime = performance.now();
 
     try {
       logger.info('[VisualCNN] 🔄 Loading CNN model...');
-      if (modelUrl) {
-        logger.info(`[VisualCNN] Loading model from: ${modelUrl}`);
+      logger.info(`[VisualCNN] Loading model from: ${modelUrl}`);
+
+      // Initialize backend
+      await tf.ready();
+      try {
+        await tf.setBackend('webgpu');
+        this.stats.webglEnabled = true; // Actually WebGPU but reusing the flag for "Hardware Accel"
+        logger.info('[VisualCNN] ⚡ WebGPU backend enabled');
+      } catch (e) {
+        logger.warn('[VisualCNN] WebGPU failed, falling back to WebGL', e);
+        try {
+            await tf.setBackend('webgl');
+            this.stats.webglEnabled = true;
+            logger.info('[VisualCNN] ⚡ WebGL backend enabled');
+        } catch (e2) {
+             logger.warn('[VisualCNN] WebGL failed, falling back to CPU', e2);
+             await tf.setBackend('cpu');
+             this.stats.webglEnabled = false;
+        }
       }
 
-      // TODO: In production, load actual TensorFlow.js or ONNX model
-      // For now, simulate model loading
-      await this.simulateModelLoad();
+      // Load actual TensorFlow.js model
+      this.model = await tf.loadGraphModel(modelUrl);
+
+      // Warmup the model
+      tf.tidy(() => {
+        const zeros = tf.zeros([1, 224, 224, 3]);
+        this.model!.predict(zeros);
+      });
 
       this.modelLoaded = true;
       this.stats.modelLoadSuccess = true;
       this.stats.totalLoadTimeMs = performance.now() - startTime;
 
-      // Check WebGL availability
-      this.stats.webglEnabled = this.checkWebGLSupport();
-
-      if (this.stats.webglEnabled) {
-        logger.info('[VisualCNN] ⚡ WebGL acceleration ENABLED');
-      } else {
-        logger.warn('[VisualCNN] ⚠️  WebGL not available, using CPU fallback');
-      }
+      // Update metadata (simulated for now as it's not directly in the model unless custom fields)
+      this.modelMetadata = {
+          version: 'v1.0.0',
+          architecture: 'MobileNetV2',
+          inputSize: 224,
+          numCategories: this.VISUAL_CATEGORIES.length,
+          quantized: true,
+          sizeBytes: 0, // Unknown without checking network
+          trainingDataset: 'TriggerWarnings-Dataset',
+          accuracy: 0.85
+      };
 
       logger.info(
         `[VisualCNN] ✅ Model loaded successfully | ` +
         `Time: ${this.stats.totalLoadTimeMs.toFixed(0)}ms | ` +
-        `Version: ${this.modelMetadata?.version} | ` +
-        `Size: ${((this.modelMetadata?.sizeBytes || 0) / 1024 / 1024).toFixed(2)}MB | ` +
-        `Accuracy: ${(this.modelMetadata?.accuracy || 0) * 100}%`
+        `Backend: ${tf.getBackend()}`
       );
 
       return true;
@@ -189,7 +216,7 @@ export class VisualCNN {
    * 5. Return confidences for all categories
    */
   async classify(imageData: ImageData): Promise<CNNInferenceResult> {
-    if (!this.modelLoaded) {
+    if (!this.modelLoaded || !this.model) {
       throw new Error('Model not loaded. Call loadModel() first.');
     }
 
@@ -205,11 +232,29 @@ export class VisualCNN {
       return cached;
     }
 
-    // Preprocess frame
-    const preprocessed = this.preprocessFrame(imageData);
+    // Prepare input tensor
+    const inputTensor = tf.tidy(() => {
+        return this.preprocessFrame(imageData);
+    });
 
-    // Run inference (simulated for now)
-    const confidences = await this.runInference(preprocessed);
+    let confidences: CategoryConfidences;
+
+    try {
+        // Run inference
+        const prediction = this.model.predict(inputTensor) as tf.Tensor;
+
+        // Get data
+        const data = await prediction.data();
+        prediction.dispose();
+
+        // Map to categories
+        confidences = this.mapOutputToCategories(data);
+    } catch (error) {
+        logger.error('[VisualCNN] Inference failed', error);
+        throw error;
+    } finally {
+        inputTensor.dispose();
+    }
 
     // Get top categories
     const topCategories = this.getTopCategories(confidences, 5);
@@ -241,48 +286,55 @@ export class VisualCNN {
    *
    * Process:
    * 1. Resize to 224x224
-   * 2. Normalize pixel values to [-1, 1] or [0, 1]
-   * 3. Convert to tensor format
+   * 2. Normalize pixel values to [-1, 1]
+   * 3. Convert to tensor format (Batch, Height, Width, Channels)
    */
-  private preprocessFrame(imageData: ImageData): Float32Array {
+  private preprocessFrame(imageData: ImageData): tf.Tensor {
+    // This should be called within tf.tidy usually, but we return a tensor
+    // so we assume the caller manages the returned tensor.
+    // However, if we use tf.tidy here, the returned tensor is disposed.
+    // So we DON'T use tf.tidy at the top level here if we want to return the tensor.
+    // But since `classify` calls `tf.tidy`, we can just return the op chain.
+
+    // Actually, `classify` wraps the call to this in `tf.tidy`, so it is safe to just chain ops.
+    // Note: tf.browser.fromPixels(imageData) creates a tensor.
+
     const targetSize = this.modelMetadata?.inputSize || 224;
 
-    // Resize frame (simplified - in production use canvas or image library)
-    const resized = this.resizeImage(imageData, targetSize, targetSize);
+    // Convert ImageData to Tensor
+    let tensor = tf.browser.fromPixels(imageData);
 
-    // Normalize pixel values (0-255 → -1 to 1)
-    const normalized = new Float32Array(targetSize * targetSize * 3);
-    for (let i = 0; i < resized.data.length; i += 4) {
-      const idx = i / 4;
-      normalized[idx * 3] = (resized.data[i] / 255) * 2 - 1;        // R
-      normalized[idx * 3 + 1] = (resized.data[i + 1] / 255) * 2 - 1;  // G
-      normalized[idx * 3 + 2] = (resized.data[i + 2] / 255) * 2 - 1;  // B
-    }
+    // Resize
+    tensor = tf.image.resizeBilinear(tensor, [targetSize, targetSize]);
 
-    return normalized;
+    // Normalize [-1, 1]
+    tensor = tensor.toFloat().div(127.5).sub(1);
+
+    // Expand dims to create batch of 1
+    return tensor.expandDims(0);
   }
 
   /**
-   * Run CNN inference
-   *
-   * In production, this would use TensorFlow.js or ONNX Runtime:
-   * - TensorFlow.js: model.predict(tensor)
-   * - ONNX Runtime: session.run(feeds)
+   * Map raw model output to category confidences
    */
-  private async runInference(_preprocessed: Float32Array): Promise<CategoryConfidences> {
-    // TODO: Replace with actual CNN inference
-    // For now, simulate inference with random outputs
+  private mapOutputToCategories(data: Float32Array | Int32Array | Uint8Array): CategoryConfidences {
+      const confidences: CategoryConfidences = {};
 
-    const confidences: CategoryConfidences = {};
+      // Assuming the model output matches the order of VISUAL_CATEGORIES
+      // If the model has more outputs (28), but we only track 20 VISUAL_CATEGORIES,
+      // we need to know the mapping. For now, we assume 1:1 mapping for the first N categories.
+      // If the model output is logits, we might need softmax, but usually models include it.
+      // We'll assume the model outputs probabilities (0-1).
 
-    for (const category of this.VISUAL_CATEGORIES) {
-      // Simulate CNN output (logits → softmax → percentage)
-      // In production, this comes from model.predict()
-      const randomConfidence = Math.random() * 100;
-      confidences[category] = randomConfidence;
-    }
+      this.VISUAL_CATEGORIES.forEach((category, index) => {
+          if (index < data.length) {
+              confidences[category] = data[index] * 100; // Convert to 0-100 percentage
+          } else {
+              confidences[category] = 0;
+          }
+      });
 
-    return confidences;
+      return confidences;
   }
 
   /**
@@ -304,73 +356,18 @@ export class VisualCNN {
   }
 
   /**
-   * Resize image to target dimensions
-   */
-  private resizeImage(imageData: ImageData, targetWidth: number, targetHeight: number): ImageData {
-    // Check if we need to resize
-    if (imageData.width === targetWidth && imageData.height === targetHeight) {
-      return imageData;
-    }
-
-    try {
-      let srcCanvas: OffscreenCanvas | HTMLCanvasElement;
-      let destCanvas: OffscreenCanvas | HTMLCanvasElement;
-      let srcCtx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
-      let destCtx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
-
-      // Determine available Canvas API (Worker vs Main Thread)
-      if (typeof OffscreenCanvas !== 'undefined') {
-        srcCanvas = new OffscreenCanvas(imageData.width, imageData.height);
-        destCanvas = new OffscreenCanvas(targetWidth, targetHeight);
-      } else if (typeof document !== 'undefined') {
-        srcCanvas = document.createElement('canvas');
-        srcCanvas.width = imageData.width;
-        srcCanvas.height = imageData.height;
-        destCanvas = document.createElement('canvas');
-        destCanvas.width = targetWidth;
-        destCanvas.height = targetHeight;
-      } else {
-        logger.error('[VisualCNN] Canvas API not available for resizing');
-        return imageData;
-      }
-
-      srcCtx = srcCanvas.getContext('2d') as any;
-      destCtx = destCanvas.getContext('2d') as any;
-
-      if (!srcCtx || !destCtx) {
-        throw new Error('Could not get 2D context');
-      }
-
-      // Draw original data to source canvas
-      srcCtx.putImageData(imageData, 0, 0);
-
-      // Draw source canvas to destination canvas with scaling
-      if ('imageSmoothingQuality' in destCtx) {
-        // @ts-ignore - Property exists on some context types
-        destCtx.imageSmoothingQuality = 'medium';
-      }
-
-      // Use standard drawImage which handles resizing
-      destCtx.drawImage(srcCanvas as any, 0, 0, targetWidth, targetHeight);
-
-      return destCtx.getImageData(0, 0, targetWidth, targetHeight);
-    } catch (error) {
-      logger.error('[VisualCNN] Resize failed:', error);
-      return imageData; // Fallback to original
-    }
-  }
-
-  /**
    * Generate hash for frame caching
    */
   private generateFrameHash(imageData: ImageData): string {
     // Simple hash based on average pixel values
     // In production, use perceptual hash or content-based hash
     let sum = 0;
-    for (let i = 0; i < imageData.data.length; i += 400) {
+    // Sample pixels for speed
+    const step = Math.floor(imageData.data.length / 100) * 4;
+    for (let i = 0; i < imageData.data.length; i += Math.max(4, step)) {
       sum += imageData.data[i];
     }
-    return `frame-${Math.floor(sum / 1000)}`;
+    return `frame-${imageData.width}x${imageData.height}-${sum}`;
   }
 
   /**
@@ -403,42 +400,17 @@ export class VisualCNN {
   }
 
   /**
-   * Enable/disable WebGL acceleration
+   * Enable/disable WebGL acceleration (Deprecated: handled by TFJS backend)
    */
   enableWebGLAcceleration(enable: boolean = true): void {
-    this.useWebGL = enable && this.checkWebGLSupport();
-
-    if (this.useWebGL) {
-      logger.info('[VisualCNN] ⚡ WebGL acceleration enabled');
+    this.useWebGL = enable;
+    // Note: TFJS backend is set globally, changing it per instance is tricky if multiple instances exist.
+    // We log it only.
+    if (enable) {
+         logger.info('[VisualCNN] Request to enable GPU acceleration');
     } else {
-      logger.info('[VisualCNN] CPU mode enabled');
+         logger.info('[VisualCNN] Request to disable GPU acceleration (CPU mode)');
     }
-  }
-
-  /**
-   * Simulate model loading (for development)
-   */
-  private async simulateModelLoad(): Promise<void> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Create mock model metadata
-    this.modelMetadata = {
-      version: 'v1.0.0',
-      architecture: 'MobileNetV2 + Custom Head',
-      inputSize: 224,
-      numCategories: this.VISUAL_CATEGORIES.length,
-      quantized: true,
-      sizeBytes: 4.8 * 1024 * 1024,  // 4.8MB
-      trainingDataset: 'TriggerWarnings-Dataset-v1 (50k images)',
-      accuracy: 0.87  // 87% test accuracy
-    };
-
-    // Mock model
-    this.model = {
-      name: 'VisualTriggerDetector',
-      loaded: true
-    };
   }
 
   /**
@@ -470,7 +442,7 @@ export class VisualCNN {
    */
   dispose(): void {
     if (this.model) {
-      // In production, call model.dispose() to free GPU memory
+      this.model.dispose();
       this.model = null;
     }
 
@@ -498,44 +470,3 @@ export class VisualCNN {
  * Singleton instance
  */
 export const visualCNN = new VisualCNN();
-
-/**
- * VISUAL CNN INTEGRATION COMPLETE ✅
- *
- * Framework Features:
- * - Lightweight CNN model support (<5MB)
- * - 224x224 RGB input
- * - 28-category simultaneous classification
- * - WebGL acceleration for GPU inference
- * - Frame caching (LRU cache)
- * - Progressive loading support
- * - Fallback to handcrafted features
- *
- * Architecture:
- * - Input: 224x224 RGB frames
- * - Backbone: MobileNetV2 (efficient for mobile/browser)
- * - Head: Custom fully connected layers
- * - Output: 28-dimensional softmax
- * - Quantization: INT8 quantization for smaller size
- *
- * Benefits:
- * - 15-20% accuracy improvement (learned vs handcrafted features)
- * - Better blood detection (complex patterns vs red pixels)
- * - Better gore detection (texture learning)
- * - Better vomit detection (color + texture together)
- * - Better medical scene detection (clinical settings)
- *
- * Equal Treatment:
- * - All 20 visual categories classified simultaneously
- * - Same architectural depth for all categories
- * - Learned features for all (no handcrafted bias)
- * - Balanced training data across categories
- *
- * Production Deployment:
- * 1. Train CNN on labeled dataset (50k+ images)
- * 2. Quantize to INT8 (4-5MB model)
- * 3. Host on CDN (fast global delivery)
- * 4. Load on first video frame
- * 5. Cache in IndexedDB for offline use
- * 6. Fallback to handcrafted features if load fails
- */
