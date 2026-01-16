@@ -112,38 +112,37 @@ class VisualCNN {
     const startTime = performance.now();
     this.stats.totalInferences++;
 
-    // Note: tf.tidy doesn't support async functions, so we manage tensors manually
+    // Note: tf.tidy doesn't support async functions, so we manage tensors carefully
     try {
+      // ⚡ Bolt: Wrapped initial frame creation in tidy is not possible because we need it later,
+      // but we will dispose it manually.
       const currentFrame = tf.browser.fromPixels(imageBitmap);
 
-      if (this.previousFrame) {
-        const diff = tf.abs(
-          currentFrame
-            .toFloat()
-            .div(tf.scalar(255))
-            .sub(this.previousFrame.toFloat().div(tf.scalar(255)))
-        );
-        const sceneChange = (await tf.mean(diff).data())[0] > this.SCENE_CHANGE_THRESHOLD;
-        diff.dispose();
+      let sceneChange = true; // Default to true for first frame
 
-        if (sceneChange) {
-          this.stats.sceneChangesDetected++;
-          const result = await this.runClassification(currentFrame as tf.Tensor3D);
-          if (result) {
-            result.processingTimeMs = performance.now() - startTime;
-            // Post result back to the main thread
-            self.postMessage({ type: 'result', payload: result });
-          }
-        }
-      } else {
-        // Always classify the first frame
+      if (this.previousFrame) {
+        // ⚡ Bolt: Use tf.tidy() to automatically dispose all intermediate tensors
+        // created during diff calculation.
+        sceneChange = tf.tidy(() => {
+          const curr = currentFrame.toFloat().div(tf.scalar(255));
+          const prev = this.previousFrame!.toFloat().div(tf.scalar(255));
+          const diff = tf.abs(curr.sub(prev));
+          // Use dataSync() inside worker to avoid async complexity in tidy
+          return (diff.mean().dataSync())[0] > this.SCENE_CHANGE_THRESHOLD;
+        });
+      }
+
+      if (sceneChange) {
+        this.stats.sceneChangesDetected++;
         const result = await this.runClassification(currentFrame as tf.Tensor3D);
         if (result) {
           result.processingTimeMs = performance.now() - startTime;
+          // Post result back to the main thread
           self.postMessage({ type: 'result', payload: result });
         }
       }
 
+      // ⚡ Bolt: Optimization - Dispose previous frame before assignment
       this.previousFrame?.dispose();
       this.previousFrame = tf.clone(currentFrame);
       currentFrame.dispose();
@@ -153,14 +152,19 @@ class VisualCNN {
   }
 
   private async runClassification(frame: tf.Tensor3D): Promise<CNNInferenceResult | null> {
-    // Normalize the frame to the range [-1, 1] and resize to the model's expected input size.
-    const normalizedFrame = frame.toFloat().div(tf.scalar(127.5)).sub(tf.scalar(1)) as tf.Tensor3D;
-    const resizedFrame = tf.image.resizeBilinear(normalizedFrame, [224, 224]);
-    const reshapedFrame = resizedFrame.reshape([1, 224, 224, 3]);
+    // ⚡ Bolt: Use tf.tidy() to clean up all preprocessing tensors automatically.
+    // Returns outputTensor which escapes the tidy zone.
+    const outputTensor = tf.tidy(() => {
+        // Normalize the frame to the range [-1, 1] and resize to the model's expected input size.
+        const normalizedFrame = frame.toFloat().div(tf.scalar(127.5)).sub(tf.scalar(1)) as tf.Tensor3D;
+        const resizedFrame = tf.image.resizeBilinear(normalizedFrame, [224, 224]);
+        const reshapedFrame = resizedFrame.reshape([1, 224, 224, 3]);
 
-    const outputTensor = this.model!.predict(reshapedFrame) as tf.Tensor;
+        return this.model!.predict(reshapedFrame) as tf.Tensor;
+    });
+
     const predictions = await outputTensor.data();
-    outputTensor.dispose();
+    outputTensor.dispose(); // ⚡ Bolt: Manually dispose the result
 
     // Since we don't have the class names for this model, we'll use placeholder names.
     const confidences: CategoryConfidences = {};
