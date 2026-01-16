@@ -116,7 +116,15 @@ export class BayesianConsensusSystem {
   private storageLoaded = false;
   private pendingOperations: Array<() => void> = [];
 
+  // Storage ready promise to prevent race conditions
+  private storageReadyPromise: Promise<void>;
+  private resolveStorageReady!: () => void;
+
   constructor() {
+    this.storageReadyPromise = new Promise((resolve) => {
+        this.resolveStorageReady = resolve;
+    });
+
     logger.info('[BayesianConsensusSystem] 🗳️ Initialized Bayesian Community Voting System');
     this.loadFromStorage();
 
@@ -127,19 +135,21 @@ export class BayesianConsensusSystem {
   /**
    * Initialize consensus for a content segment based on AI detection
    * Called when AI first detects something, to establish a prior.
+   *
+   * @returns ConsensusState promise
    */
-  initializeConsensus(
+  async initializeConsensus(
     contentId: string,
     category: TriggerCategory,
     aiConfidence: number // 0-100
-  ): ConsensusState {
-    const key = this.getCacheKey(contentId, category);
+  ): Promise<ConsensusState> {
 
-    // If storage not loaded, queue checking but proceed with creation
-    // This might cause a temporary overwrite if the item exists in storage but not yet loaded
-    // To fix this, we would need this method to be async, but that changes the interface significantly.
-    // Given the constraints, we accept the risk for initialization (rare race condition on first load)
-    // but we ensure writes are preserved via merge logic in loadFromStorage.
+    // Wait for storage to load to prevent race conditions
+    if (!this.storageLoaded) {
+      await this.storageReadyPromise;
+    }
+
+    const key = this.getCacheKey(contentId, category);
 
     if (this.consensusCache.has(key)) {
       return this.consensusCache.get(key)!;
@@ -177,8 +187,13 @@ export class BayesianConsensusSystem {
   /**
    * Process a user vote
    */
-  processVote(vote: ConsensusVote): ConsensusState {
+  async processVote(vote: ConsensusVote): Promise<ConsensusState> {
     this.stats.totalVotesProcessed++;
+
+    // Wait for storage to load
+    if (!this.storageLoaded) {
+      await this.storageReadyPromise;
+    }
 
     // Get user reliability
     const reliability = this.getUserReliability(vote.userId);
@@ -190,7 +205,11 @@ export class BayesianConsensusSystem {
 
       // Return existing state without update, or initialize if missing
       const key = this.getCacheKey(vote.contentId, vote.category);
-      return this.consensusCache.get(key) || this.initializeConsensus(vote.contentId, vote.category, 50);
+      if (this.consensusCache.has(key)) {
+        return this.consensusCache.get(key)!;
+      } else {
+        return await this.initializeConsensus(vote.contentId, vote.category, 50);
+      }
     }
 
     const key = this.getCacheKey(vote.contentId, vote.category);
@@ -198,7 +217,7 @@ export class BayesianConsensusSystem {
 
     if (!state) {
       // If no prior state, assume neutral prior (50%)
-      state = this.initializeConsensus(vote.contentId, vote.category, 50);
+      state = await this.initializeConsensus(vote.contentId, vote.category, 50);
     }
 
     // Update Beta distribution (Bayesian Update)
@@ -234,6 +253,8 @@ export class BayesianConsensusSystem {
 
   /**
    * Get current consensus for a trigger
+   * Note: This remains synchronous for read-only checks, but relies on caller waiting
+   * or cache being populated. If storage not loaded, returns null (miss).
    */
   getConsensus(contentId: string, category: TriggerCategory): ConsensusState | null {
     return this.consensusCache.get(this.getCacheKey(contentId, category)) || null;
@@ -305,6 +326,7 @@ export class BayesianConsensusSystem {
   private async loadFromStorage(): Promise<void> {
     if (typeof chrome === 'undefined' || !chrome.storage) {
         logger.warn('[BayesianConsensus] Chrome storage not available (not in extension context?)');
+        this.resolveStorageReady(); // Resolve anyway to unblock usage
         return;
     }
 
@@ -344,12 +366,14 @@ export class BayesianConsensusSystem {
                 }
             }
 
-            this.storageLoaded = true;
-            this.processPendingOperations();
             logger.info(`[BayesianConsensus] Loaded ${this.consensusCache.size} consensus items and ${this.userReliabilityCache.size} user profiles`);
         }
     } catch (e) {
         logger.error('[BayesianConsensus] Failed to load from storage', e);
+    } finally {
+        this.storageLoaded = true;
+        this.resolveStorageReady();
+        this.processPendingOperations();
     }
   }
 
