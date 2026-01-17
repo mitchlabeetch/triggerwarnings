@@ -331,9 +331,16 @@
       class="island-core"
       on:mousedown|stopPropagation={handleDragStart}
       on:touchstart|stopPropagation={handleDragStart}
+      on:keydown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleMinimize();
+        }
+      }}
       role="button"
       tabindex="0"
-      aria-label="Trigger Warnings Active"
+      aria-label="Trigger Warnings Control"
+      aria-expanded={!isMinimized}
       title={isMinimized ? "Double-click to expand" : "Double-click to minimize"}
     >
       <span
@@ -358,6 +365,7 @@
           class="action-btn add-trigger"
           on:click={handleAddTrigger}
           title="Add a trigger timestamp"
+          aria-label="Add a trigger timestamp"
         >
           <span class="btn-icon">+</span>
         </button>
@@ -423,6 +431,7 @@
           class="quick-action-btn ignore-once"
           on:click={handleIgnoreThisTime}
           title="Ignore this occurrence"
+          aria-label="Ignore this occurrence"
         >
           Ignore
         </button>
@@ -430,6 +439,7 @@
           class="quick-action-btn ignore-all"
           on:click={handleIgnoreAllVideo}
           title="Ignore all {categoryInfo.name} warnings in this video"
+          aria-label="Ignore all {categoryInfo.name} warnings in this video"
         >
           Ignore All
         </button>
@@ -437,6 +447,7 @@
           class="quick-action-btn skip-now"
           on:click={handleSkipToEnd}
           title="Skip to after this trigger"
+          aria-label="Skip to after this trigger"
         >
           Skip →
         </button>

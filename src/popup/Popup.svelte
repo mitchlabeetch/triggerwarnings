@@ -186,7 +186,7 @@
       <section class="popup-section">
         <div class="section-header">
           <h2 class="section-title">Active Profile</h2>
-          <button class="btn-icon" on:click={openCreateProfile} title="Create new profile">
+          <button class="btn-icon" on:click={openCreateProfile} title="Create new profile" aria-label="Create new profile">
             ➕
           </button>
         </div>
@@ -201,14 +201,16 @@
             <button
               class="btn-icon-small"
               on:click={() => activeProfile && openRenameProfile(activeProfile)}
-              title="Rename">✏️</button
-            >
+              title="Rename"
+              aria-label="Rename profile"
+            >✏️</button>
             {#if allProfiles.length > 1}
               <button
                 class="btn-icon-small"
                 on:click={() => activeProfile && openDeleteProfile(activeProfile)}
-                title="Delete">🗑️</button
-              >
+                title="Delete"
+                aria-label="Delete profile"
+              >🗑️</button>
             {/if}
           </div>
         </div>
@@ -478,6 +480,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background-color 0.2s, transform 0.1s;
+  }
+  .btn-icon:hover,
+  .btn-icon-small:hover {
+    background-color: var(--card-active-bg);
+  }
+  .btn-icon:active,
+  .btn-icon-small:active {
+    transform: scale(0.95);
   }
   .btn-icon {
     width: 24px;
